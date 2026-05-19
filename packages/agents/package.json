@@ -1,0 +1,24 @@
+{
+  "name": "@provideriq/agents",
+  "version": "1.0.0",
+  "private": true,
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "scripts": {
+    "build": "tsc",
+    "clean": "rm -rf dist",
+    "lint": "eslint src/"
+  },
+  "dependencies": {
+    "@provideriq/shared": "workspace:*",
+    "@provideriq/database": "workspace:*",
+    "@provideriq/connectors": "workspace:*",
+    "@provideriq/scoring": "workspace:*",
+    "@google/genai": "^0.2.0",
+    "axios": "^1.7.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "typescript": "^5.6.0"
+  }
+}

@@ -1,0 +1,320 @@
+// ProviderIQ — Complete Database Schema
+// Provider Intelligence Platform by Inquantic.Ai
+
+generator client {
+  provider        = "prisma-client-js"
+}
+
+datasource db {
+  provider   = "sqlite"
+  url        = "file:./dev.db"
+}
+
+// ============================================================
+// CORE: Healthcare Facility
+// ============================================================
+
+model Facility {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Identity
+  name              String
+  nameAliases       String? // alternate names for fuzzy matching
+  abdmFacilityId    String?  @unique // ABDM Health Facility Registry ID
+  nabhAccreditationNo String? @unique
+  cghsEmpanelmentId String?
+
+  // Location
+  address   String?
+  city      String
+  state     String
+  pincode   String?
+  latitude  Float?
+  longitude Float?
+  tier      FacilityTier // METRO, TIER_2, TIER_3, RURAL
+
+  // Characteristics
+  facilityType      FacilityType // HOSPITAL, CLINIC, etc.
+  bedCount          Int?
+  icuBeds           Int?
+  nicuBeds          Int?
+  operatingTheatres Int?
+  specialties       String?
+
+  // Accreditation
+  nabhStatus      NabhStatus @default(NOT_ACCREDITED)
+  nabhGrade       String?
+  nabhExpiryDate  DateTime?
+  abdmReadiness   Boolean    @default(false)
+  cghsEmpanelled  Boolean    @default(false)
+  echsEmpanelled  Boolean    @default(false)
+
+  // Scoring (latest computed values)
+  piiScore              Float?
+  trustScore            Float?
+  operationalScore      Float?
+  billingStabilityScore Float?
+  clinicalQualityScore  Float?
+  patientExperienceScore Float?
+  fraudRiskScore        Float?
+  fraudRiskLevel        RiskLevel? @default(LOW)
+  scoreUpdatedAt        DateTime?
+
+  // Embeddings for semantic search (OpenAI ada-002 dimension)
+  embedding             String?
+
+  // Relations
+  researchRuns ResearchRun[]
+  scoreHistory ScoreHistory[]
+  signals      Signal[]
+  physicians   FacilityPhysician[]
+  reviews      Review[]
+  newsItems    NewsItem[]
+  claims       ClaimsRecord[]
+
+  @@index([city, state])
+  @@index([piiScore])
+  @@index([fraudRiskLevel])
+  @@index([state, tier])
+  @@index([nabhStatus])
+}
+
+// ============================================================
+// RESEARCH: AI Agent Research Runs
+// ============================================================
+
+model ResearchRun {
+  id          String    @id @default(cuid())
+  facilityId  String
+  facility    Facility  @relation(fields: [facilityId], references: [id], onDelete: Cascade)
+  createdAt   DateTime  @default(now())
+  completedAt DateTime?
+  status      RunStatus @default(QUEUED)
+  triggeredBy String?   // user/API key ID or "system"
+  agentResults Json?    // raw results from each agent
+  errorLog    String?
+  durationMs  Int?
+
+  @@index([facilityId, createdAt])
+  @@index([status])
+}
+
+// ============================================================
+// SCORING: Historical Score Snapshots
+// ============================================================
+
+model ScoreHistory {
+  id         String   @id @default(cuid())
+  facilityId String
+  facility   Facility @relation(fields: [facilityId], references: [id], onDelete: Cascade)
+  recordedAt DateTime @default(now())
+
+  piiScore              Float
+  trustScore            Float?
+  operationalScore      Float?
+  billingStabilityScore Float?
+  clinicalQualityScore  Float?
+  patientExperienceScore Float?
+  fraudRiskScore        Float?
+  snapshotReason        String? // "scheduled", "triggered", "data_update"
+
+  @@index([facilityId, recordedAt])
+}
+
+// ============================================================
+// SIGNALS: Raw Intelligence Signals
+// ============================================================
+
+model Signal {
+  id         String   @id @default(cuid())
+  facilityId String
+  facility   Facility @relation(fields: [facilityId], references: [id], onDelete: Cascade)
+  createdAt  DateTime @default(now())
+
+  category  SignalCategory // TRUST, OPERATIONAL, BILLING, etc.
+  dimension String         // specific sub-dimension key
+  source    String         // "NABH", "ABDM", "GOOGLE_MAPS", etc.
+  sourceUrl String?
+
+  value     Float?   // numeric value if applicable
+  valueText String?  // text value if applicable
+  sentiment Float?   // -1 to 1 for sentiment signals
+  weight    Float    @default(1.0)
+  confidence Float   @default(1.0) // 0-1
+
+  // Temporal decay
+  capturedAt DateTime @default(now())
+  expiresAt  DateTime?
+  isDecayed  Boolean  @default(false)
+
+  rawData Json? // raw API response for audit
+
+  @@index([facilityId, category])
+  @@index([facilityId, capturedAt])
+  @@index([category, source])
+}
+
+// ============================================================
+// CLINICAL: Physician Registry
+// ============================================================
+
+model Physician {
+  id             String  @id @default(cuid())
+  nmcRegNo       String? @unique
+  name           String
+  specialization String?
+  qualification  String?
+  nmcVerified    Boolean @default(false)
+
+  facilities FacilityPhysician[]
+}
+
+model FacilityPhysician {
+  facilityId  String
+  physicianId String
+  role        String?
+  isFullTime  Boolean @default(true)
+
+  facility  Facility  @relation(fields: [facilityId], references: [id], onDelete: Cascade)
+  physician Physician @relation(fields: [physicianId], references: [id], onDelete: Cascade)
+
+  @@id([facilityId, physicianId])
+}
+
+// ============================================================
+// REVIEWS: Patient Review Data
+// ============================================================
+
+model Review {
+  id         String   @id @default(cuid())
+  facilityId String
+  facility   Facility @relation(fields: [facilityId], references: [id], onDelete: Cascade)
+
+  source        String   // "GOOGLE", "PRACTO", "JUSTDIAL", "LYBRATE"
+  rating        Float?
+  text          String?
+  themes        String? // extracted: ["billing", "staff", "cleanliness"]
+  sentimentScore Float?
+  reviewDate    DateTime?
+  crawledAt     DateTime @default(now())
+
+  @@index([facilityId, source])
+  @@index([facilityId, crawledAt])
+}
+
+// ============================================================
+// NEWS: Media Coverage
+// ============================================================
+
+model NewsItem {
+  id         String   @id @default(cuid())
+  facilityId String
+  facility   Facility @relation(fields: [facilityId], references: [id], onDelete: Cascade)
+
+  headline      String
+  source        String
+  url           String?
+  publishedAt   DateTime?
+  sentimentScore Float?
+  summary       String?
+  crawledAt     DateTime @default(now())
+
+  @@index([facilityId, publishedAt])
+}
+
+// ============================================================
+// CLAIMS: Insurance Claims Records
+// ============================================================
+
+model ClaimsRecord {
+  id         String   @id @default(cuid())
+  facilityId String
+  facility   Facility @relation(fields: [facilityId], references: [id], onDelete: Cascade)
+
+  dataSource String // "NHCX", "INSURER_API", "MANUAL"
+  period     String // "2024-Q1", etc.
+
+  claimsVolume         Int?
+  avgClaimValue        Float?
+  packageAdherenceRate Float?  // 0-1
+  topUpFrequency       Float?  // % of claims with top-ups
+  avgLengthOfStay      Float?
+  benchmarkLOS         Float?
+
+  procedureMix         Json?   // {code: count} distribution
+  billingVarianceScore Float?  // computed anomaly score
+
+  recordedAt DateTime @default(now())
+
+  @@index([facilityId, period])
+}
+
+// ============================================================
+// AUTH: API Key Management
+// ============================================================
+
+model ApiKey {
+  id         String   @id @default(cuid())
+  key        String   @unique
+  name       String
+  ownerId    String
+  scopes     String? // "read", "write", "research", "admin"
+  createdAt  DateTime @default(now())
+  lastUsedAt DateTime?
+  isActive   Boolean  @default(true)
+
+  @@index([key])
+}
+
+// ============================================================
+// ENUMS
+// ============================================================
+
+enum FacilityTier {
+  METRO
+  TIER_2
+  TIER_3
+  RURAL
+}
+
+enum FacilityType {
+  HOSPITAL
+  CLINIC
+  DIAGNOSTIC_CENTER
+  NURSING_HOME
+  SPECIALTY_CENTER
+}
+
+enum NabhStatus {
+  NOT_ACCREDITED
+  ACCREDITED_ENTRY
+  ACCREDITED_FULL
+  ACCREDITED_PROGRESSIVE
+  EXPIRED
+}
+
+enum RiskLevel {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum RunStatus {
+  QUEUED
+  RUNNING
+  COMPLETED
+  FAILED
+  PARTIAL
+}
+
+enum SignalCategory {
+  TRUST
+  OPERATIONAL
+  BILLING
+  CLINICAL
+  PATIENT
+  FRAUD
+}

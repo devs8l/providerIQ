@@ -1,0 +1,29 @@
+{
+  "name": "provideriq",
+  "version": "1.0.0",
+  "private": true,
+  "description": "ProviderIQ — AI-Native Provider Intelligence Platform by Inquantic.Ai",
+  "scripts": {
+    "dev": "turbo run dev",
+    "build": "turbo run build",
+    "test": "turbo run test",
+    "lint": "turbo run lint",
+    "db:generate": "pnpm --filter @provideriq/database exec prisma generate",
+    "db:migrate": "pnpm --filter @provideriq/database exec prisma migrate dev",
+    "db:seed": "pnpm --filter @provideriq/database exec prisma db seed",
+    "db:push": "pnpm --filter @provideriq/database exec prisma db push",
+    "clean": "turbo run clean && rm -rf node_modules",
+    "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,md}\""
+  },
+  "devDependencies": {
+    "turbo": "^2.3.0",
+    "prettier": "^3.4.0",
+    "@types/node": "^20.0.0",
+    "typescript": "^5.6.0"
+  },
+  "engines": {
+    "node": ">=20.0.0",
+    "pnpm": ">=9.0.0"
+  },
+  "packageManager": "pnpm@9.15.0"
+}
