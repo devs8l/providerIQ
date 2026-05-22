@@ -13,7 +13,8 @@
     "db:seed": "pnpm --filter @provideriq/database exec prisma db seed",
     "db:push": "pnpm --filter @provideriq/database exec prisma db push",
     "clean": "turbo run clean && rm -rf node_modules",
-    "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,md}\""
+    "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,md}\"",
+    "postinstall": "pnpm run db:generate"
   },
   "devDependencies": {
     "turbo": "^2.3.0",

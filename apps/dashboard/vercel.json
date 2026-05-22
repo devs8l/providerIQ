@@ -1,0 +1,7 @@
+{
+  "name": "provideriq-inquantic",
+  "framework": "vite",
+  "installCommand": "echo 'already installed'",
+  "buildCommand": "echo 'already built'",
+  "outputDirectory": "dist"
+}

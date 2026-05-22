@@ -11,9 +11,10 @@
     "lint": "eslint src/"
   },
   "dependencies": {
-    "@provideriq/shared": "workspace:*",
-    "@provideriq/database": "workspace:*",
     "@provideriq/agents": "workspace:*",
+    "@provideriq/connectors": "workspace:^",
+    "@provideriq/database": "workspace:*",
+    "@provideriq/shared": "workspace:*",
     "@trpc/server": "^11.0.0-rc.366",
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",

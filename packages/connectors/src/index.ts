@@ -4,12 +4,14 @@
 import { ABDMConnector } from './abdm.connector.js';
 import { GoogleMapsConnector } from './google-maps.connector.js';
 import { NABHConnector } from './nabh.connector.js';
+import { LiveScraperConnector } from './live-scraper.connector.js';
 import type { ConnectorResult } from '@provideriq/shared';
 
 export class ConnectorOrchestrator {
   private abdm = new ABDMConnector();
   private nabh = new NABHConnector();
   private gmaps = new GoogleMapsConnector();
+  private scraper = new LiveScraperConnector();
 
   async runAll(
     facilityName: string,
@@ -22,6 +24,7 @@ export class ConnectorOrchestrator {
       this.abdm.fetch(facilityName, city, state),
       this.nabh.fetch(facilityName, city, state),
       this.gmaps.fetch(facilityName, city, state),
+      this.scraper.fetch(facilityName, city, state),
     ];
 
     return Promise.all(tasks);
@@ -32,4 +35,5 @@ export * from './base.connector.js';
 export * from './abdm.connector.js';
 export * from './nabh.connector.js';
 export * from './google-maps.connector.js';
+export * from './live-scraper.connector.js';
 export default ConnectorOrchestrator;

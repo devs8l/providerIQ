@@ -5,6 +5,7 @@ import { initTRPC, TRPCError } from '@trpc/server';
 import type { Context } from './context.js';
 import { z } from 'zod';
 import { OrchestratorAgent } from '@provideriq/agents';
+import { LiveScraperConnector } from '@provideriq/connectors';
 
 const t = initTRPC.context<Context>().create();
 
@@ -133,6 +134,26 @@ export const appRouter = router({
         status: 'RUNNING',
         estimatedDurationMs: 45000,
       };
+    }),
+
+  // Real-time raw data crawler for the provenance dashboard
+  liveCrawl: publicProcedure
+    .input(z.object({ facilityName: z.string(), city: z.string(), state: z.string() }))
+    .mutation(async ({ input }) => {
+      const scraper = new LiveScraperConnector();
+      const result = await scraper.fetch(input.facilityName, input.city, input.state);
+      return { result };
+    }),
+
+  // Fetch all raw reviews for raw JSON tab
+  getAllReviews: publicProcedure
+    .query(async ({ ctx }) => {
+      const reviews = await ctx.db.review.findMany({
+        orderBy: { crawledAt: 'desc' },
+        take: 1000,
+        include: { facility: { select: { name: true, city: true } } }
+      });
+      return { reviews };
     }),
 });
 

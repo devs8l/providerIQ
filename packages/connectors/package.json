@@ -10,12 +10,13 @@
     "lint": "eslint src/"
   },
   "dependencies": {
-    "@provideriq/shared": "workspace:*",
     "@provideriq/database": "workspace:*",
-    "axios": "^1.7.0"
+    "@provideriq/shared": "workspace:*",
+    "axios": "^1.7.0",
+    "cheerio": "^1.2.0"
   },
   "devDependencies": {
-    "typescript": "^5.6.0",
-    "@types/node": "^20.0.0"
+    "@types/node": "^20.0.0",
+    "typescript": "^5.6.0"
   }
 }

@@ -43,6 +43,7 @@ export class OrchestratorAgent extends BaseAgent {
               weight: sig.weight ?? 1.0,
               confidence: sig.confidence ?? 1.0,
               capturedAt: new Date(),
+              rawData: (sig as any).metadata ? (sig as any).metadata : undefined,
             });
           }
         }
@@ -63,7 +64,7 @@ export class OrchestratorAgent extends BaseAgent {
         },
       });
 
-      const mappedSignals = allSignals.map((sig) => ({
+      const mappedSignals = allSignals.map((sig: any) => ({
         ...sig,
         value: sig.value ?? undefined,
         sourceUrl: sig.sourceUrl ?? undefined,

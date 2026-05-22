@@ -8,7 +8,9 @@ import { createExpressMiddleware } from '@trpc/server/adapters/express';
 import { createContext } from './trpc/context.js';
 import { appRouter } from './trpc/router.js';
 
-const app = express();
+import type { Express } from 'express';
+
+const app: Express = express();
 const port = process.env['API_PORT'] ?? 4000;
 
 app.use(cors({ origin: '*' }));
@@ -22,7 +24,7 @@ app.use((req, res, next) => {
 
 // tRPC express gateway
 app.use(
-  '/trpc',
+  ['/trpc', '/api/trpc'],
   createExpressMiddleware({
     router: appRouter,
     createContext,
@@ -38,7 +40,11 @@ app.get('/health', (req, res) => {
   });
 });
 
-app.listen(port, () => {
-  console.log(`[ProviderIQ Server] Live & listening on http://localhost:${port}`);
-  console.log(`[ProviderIQ Server] tRPC endpoints exposed at http://localhost:${port}/trpc`);
-});
+if (process.env['NODE_ENV'] !== 'production') {
+  app.listen(port, () => {
+    console.log(`[ProviderIQ Server] Live & listening on http://localhost:${port}`);
+    console.log(`[ProviderIQ Server] tRPC endpoints exposed at http://localhost:${port}/trpc`);
+  });
+}
+
+export default app;

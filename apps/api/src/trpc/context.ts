@@ -12,7 +12,7 @@ export interface Context {
 export async function createContext({
   req,
 }: CreateExpressContextOptions): Promise<Context> {
-  const authHeader = req.headers.authorization;
+  const authHeader = (req as any).headers.authorization;
   let apiKey: string | undefined;
 
   if (authHeader && authHeader.startsWith('Bearer ')) {
