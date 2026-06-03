@@ -40,8 +40,37 @@ model Facility {
   bedCount          Int?
   icuBeds           Int?
   nicuBeds          Int?
+  picuBeds          Int?
+  isolationBeds     Int?
+  hduBeds           Int?
   operatingTheatres Int?
   specialties       String?
+  ownershipType     String?  // Trust, Private Ltd, Sole Proprietorship, etc.
+  yearEstablished   Int?
+  providerStream    String?  // Allopathy, Ayush, etc.
+
+  // GIC / Insurance Empanelment
+  gicEmpanelled     Boolean  @default(false)
+  gicRohiniId       String?  @unique
+  gicTotalScore     Int?     // ROHINI quality score (0-200)
+  gicRegistrationNo String?
+
+  // Infrastructure & Compliance
+  hasPharmacy       Boolean  @default(false)
+  hasFireNoc        Boolean  @default(false)
+  hasBloodBank      Boolean  @default(false)
+  hasAmbulance      Boolean  @default(false)
+  ambulanceType     String?  // "In-house", "Outsourced", or null
+  hasCathLab        Boolean  @default(false)
+  hasDialysis       Boolean  @default(false)
+  ventilatorCount   Int?
+  drBedRatio        String?
+  nurseBedRatio     String?
+
+  // Staff
+  totalDoctors      Int?
+  totalNurses       Int?
+  totalSurgeons     Int?
 
   // Accreditation
   nabhStatus      NabhStatus @default(NOT_ACCREDITED)

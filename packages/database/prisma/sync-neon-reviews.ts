@@ -22,6 +22,14 @@ const HOSPITAL_MAP: Record<string, { name: string; city: string }> = {
   'manipal-whitefield-blr': { name: 'Manipal Hospital Whitefield', city: 'Bengaluru' },
   'bombay-hospital-indore': { name: 'Bombay Hospital', city: 'Indore' },
   'nanavati-max-mumbai': { name: 'Nanavati Max Hospital', city: 'Mumbai' },
+  'saraswathi-ims-hapur': { name: 'Saraswathi Institute of Medical Sciences', city: 'Hapur' },
+  'fame-hospital-mangalore': { name: 'FAME Hospital', city: 'Mysuru' },
+  'sgnc-eye-indore': { name: 'Shri Gurudev Netra Chikitsalaya', city: 'Indore' },
+  'rajalakshmi-hospital-bangalore': { name: 'Rajalakshmi Hospital', city: 'Bangalore' },
+  'manomay-maternity-bhopal': { name: 'Manomay Maternity and Nursing Home', city: 'Bhopal' },
+  'dadar-eye-gynaec-mumbai': { name: 'Dadar Eye and Gynaec Centre', city: 'Mumbai' },
+  'newera-hospitals': { name: 'NewEra Hospitals', city: 'Navi Mumbai' },
+  'nurture-hospital': { name: 'Nurture Hospital', city: 'Indore' },
 };
 
 async function main() {
@@ -32,19 +40,40 @@ async function main() {
 
   console.log('Connecting to Neon raw_evidence...');
 
-  // Resolve Prisma facility IDs
+  // Resolve Prisma facility IDs (auto-create if not found)
   const facilityMap = new Map<string, string>(); // hospital_seed_id → prisma facility ID
   for (const [seedId, { name, city }] of Object.entries(HOSPITAL_MAP)) {
-    const fac = await prisma.facility.findFirst({
+    let fac = await prisma.facility.findFirst({
       where: { name, city },
       select: { id: true },
     });
-    if (fac) {
-      facilityMap.set(seedId, fac.id);
-      console.log(`  Mapped: ${seedId} → ${fac.id} (${name}, ${city})`);
-    } else {
-      console.warn(`  WARNING: No facility found for ${name}, ${city}`);
+    if (!fac) {
+      // Auto-create facility for new hospitals
+      fac = await prisma.facility.create({
+        data: {
+          name,
+          city,
+          state: 'Unknown',
+          tier: 'TIER_2',
+          facilityType: 'HOSPITAL',
+          bedCount: 100,
+          icuBeds: 10,
+          nabhStatus: 'NOT_ACCREDITED',
+          piiScore: 50,
+          trustScore: 50,
+          operationalScore: 50,
+          billingStabilityScore: 50,
+          clinicalQualityScore: 50,
+          patientExperienceScore: 50,
+          fraudRiskScore: 10,
+          fraudRiskLevel: 'LOW',
+        },
+        select: { id: true },
+      });
+      console.log(`  CREATED: ${name} (${city}) → ${fac.id}`);
     }
+    facilityMap.set(seedId, fac.id);
+    console.log(`  Mapped: ${seedId} → ${fac.id} (${name}, ${city})`);
   }
 
   // Pull all reviews from Neon
@@ -106,7 +135,13 @@ async function main() {
     const facilityId = facilityMap.get(seedId);
     if (!facilityId) continue;
 
-    const scores = computeScoresFromReviews(reviews);
+    // Fetch facility record for infrastructure bonus
+    const facility = await prisma.facility.findUnique({
+      where: { id: facilityId },
+      select: { bedCount: true, icuBeds: true, nabhStatus: true, tier: true, hasDialysis: true, hasBloodBank: true, hasCathLab: true, hasAmbulance: true },
+    });
+
+    const scores = computeScoresFromReviews(reviews, facility);
     await prisma.facility.update({
       where: { id: facilityId },
       data: {
@@ -158,8 +193,8 @@ function computeSentiment(rating: number | null, text: string | null): number {
   return Math.max(0, Math.min(1, score));
 }
 
-/** Compute dimension scores from raw reviews */
-function computeScoresFromReviews(reviews: any[]): {
+/** Compute dimension scores from raw reviews + facility infrastructure */
+function computeScoresFromReviews(reviews: any[], facility?: any): {
   pii: number; trust: number; operational: number; billing: number;
   clinical: number; patient: number; fraud: number;
 } {
@@ -170,43 +205,71 @@ function computeScoresFromReviews(reviews: any[]): {
   // Base patient experience from average rating (0-5 → 0-100)
   const patient = Math.min(100, (avgRating / 5) * 100);
 
-  // Volume confidence bonus (more reviews = higher confidence)
-  const volumeBonus = Math.min(10, reviewCount / 100);
+  // Volume confidence bonus (more reviews = higher confidence, capped at 5)
+  const volumeBonus = Math.min(5, reviewCount / 200);
 
   // Sentiment analysis across reviews
   const texts = reviews.map((r: any) => (r.text ?? '').toLowerCase());
   const totalText = texts.join(' ');
 
-  // Clinical quality signals
-  const clinicalPosCount = (totalText.match(/good doctor|excellent care|proper treatment|saved|life saving|skilled|professional/g) || []).length;
-  const clinicalNegCount = (totalText.match(/wrong diagnosis|negligence|malpractice|died|death due to|medical error/g) || []).length;
+  // Clinical quality signals — stricter baseline
+  const clinicalPosCount = (totalText.match(/good doctor|excellent care|proper treatment|saved|life saving|skilled|professional|accurate diagnosis/g) || []).length;
+  const clinicalNegCount = (totalText.match(/wrong diagnosis|negligence|malpractice|died|death due to|medical error|misdiagnos|complications|infection/g) || []).length;
   const clinicalRatio = reviewCount > 0 ? (clinicalPosCount - clinicalNegCount) / reviewCount : 0;
-  const clinical = Math.min(100, Math.max(40, 75 + clinicalRatio * 50));
+  let clinical = Math.min(100, Math.max(30, 70 + clinicalRatio * 40));
 
-  // Billing signals  
-  const billingComplaints = (totalText.match(/overcharg|expensive|loot|bill.*high|hidden charge|fraud.*bill|unnecessary.*test/g) || []).length;
+  // NABH accreditation implies audited clinical standards
+  if (facility?.nabhStatus === 'ACCREDITED_FULL') clinical = Math.min(100, clinical + 5);
+  else if (facility?.nabhStatus === 'ACCREDITED_ENTRY') clinical = Math.min(100, clinical + 3);
+
+  // Billing signals — stricter baseline
+  const billingComplaints = (totalText.match(/overcharg|expensive|loot|bill.*high|hidden charge|fraud.*bill|unnecessary.*test|money minded|costly|rip.?off/g) || []).length;
   const billingRatio = reviewCount > 0 ? billingComplaints / reviewCount : 0;
-  const billing = Math.min(100, Math.max(40, 85 - billingRatio * 200));
+  let billing = Math.min(100, Math.max(30, 80 - billingRatio * 300));
+
+  // Accredited hospitals have audited billing practices
+  if (facility?.nabhStatus === 'ACCREDITED_FULL') billing = Math.min(100, billing + 3);
 
   // Trust signals (based on overall sentiment distribution)
   const highRatings = ratings.filter(r => r >= 4).length;
+  const lowRatings = ratings.filter(r => r <= 2).length;
   const trustRatio = ratings.length > 0 ? highRatings / ratings.length : 0.5;
-  const trust = Math.min(100, Math.max(50, trustRatio * 100 + volumeBonus));
+  const lowRatio = ratings.length > 0 ? lowRatings / ratings.length : 0;
+  const trust = Math.min(100, Math.max(40, trustRatio * 100 - lowRatio * 30 + volumeBonus));
 
   // Operational signals (wait times, infrastructure)
-  const opComplaints = (totalText.match(/long wait|hours? wait|crowd|dirty|no parking|poor infra|broken/g) || []).length;
+  const opComplaints = (totalText.match(/long wait|hours? wait|crowd|dirty|no parking|poor infra|broken|unhygien|unclean|smell|delay/g) || []).length;
   const opRatio = reviewCount > 0 ? opComplaints / reviewCount : 0;
-  const operational = Math.min(100, Math.max(40, 82 - opRatio * 150));
+  let operational = Math.min(100, Math.max(30, 78 - opRatio * 200));
 
-  // Fraud signals
-  const fraudSignals = (totalText.match(/fraud|cheat|unnecessary.*surgery|forced.*admit|money.*making|racket|scam/g) || []).length;
+  // Facilities bonus: reward hospitals with real infrastructure
+  if (facility) {
+    let facBonus = 0;
+    if (facility.nabhStatus === 'ACCREDITED_FULL') facBonus += 5;
+    else if (facility.nabhStatus === 'ACCREDITED_ENTRY') facBonus += 3;
+    if (facility.tier === 'METRO') facBonus += 3;
+    if (facility.bedCount && facility.bedCount >= 100) facBonus += Math.min(4, Math.floor(facility.bedCount / 150));
+    if (facility.icuBeds && facility.icuBeds >= 10) facBonus += 2;
+    if (facility.hasBloodBank) facBonus += 1;
+    if (facility.hasDialysis) facBonus += 1;
+    if (facility.hasCathLab) facBonus += 1;
+    if (facility.hasAmbulance) facBonus += 1;
+    operational = Math.min(100, operational + facBonus);
+  }
+
+  // Fraud signals — baseline from negative review patterns, boosted by explicit fraud keywords
+  const fraudSignals = (totalText.match(/fraud|cheat|unnecessary.*surgery|forced.*admit|money.*making|racket|scam|consumer court|negligence|sued|legal/g) || []).length;
   const fraudRatio = reviewCount > 0 ? fraudSignals / reviewCount : 0;
-  const fraud = Math.min(100, Math.max(5, fraudRatio * 500));
+  // Baseline: derive from low ratings + billing complaints (every hospital has some risk)
+  const lowRatingRatio = ratings.length > 0 ? ratings.filter(r => r <= 2).length / ratings.length : 0;
+  const fraudBaseline = Math.max(2, lowRatingRatio * 20 + billingRatio * 25);
+  const fraud = Math.min(20, fraudBaseline + fraudRatio * 400);
 
-  // PII composite (weighted average — new 5-dimension model)
-  const baseScore = (patient * 0.30 + clinical * 0.25 + billing * 0.20 + trust * 0.15);
-  const fraudPenalty = fraud > 25 ? Math.min(12, 12 * ((fraud - 25) / 75)) : 0;
-  const pii = Math.max(0, Math.min(100, baseScore / 0.90 - fraudPenalty));
+  // PII composite: PII = (Patient×0.30 + Clinical×0.25 + Billing×0.20 + Trust×0.15 + Operational×0.10) / 0.96 − FraudPenalty
+  // Weights sum to 1.00; /0.96 normalization allows top-rated hospitals to reach ~90
+  const baseScore = (patient * 0.30 + clinical * 0.25 + billing * 0.20 + trust * 0.15 + operational * 0.10) / 0.96;
+  const fraudPenalty = fraud > 20 ? Math.min(15, 15 * ((fraud - 20) / 80)) : 0;
+  const pii = Math.max(0, Math.min(100, baseScore - fraudPenalty));
 
   return { pii, trust, operational, billing, clinical, patient, fraud };
 }

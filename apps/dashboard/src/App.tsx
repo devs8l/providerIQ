@@ -506,7 +506,8 @@ export default function App() {
                   <div>
                     <h2>{d.name}</h2>
                     <div className="meta">
-                      <MapPin size={12}/> {d.city}, {d.state} <span className="sep">•</span> {d.bedCount} beds <span className="sep">•</span> {d.nabhStatus?.replace(/_/g,' ')}
+                      <MapPin size={12}/> {d.city}, {d.state} {d.bedCount ? <><span className="sep">•</span> {d.bedCount} beds</> : ''} <span className="sep">•</span> {d.nabhStatus?.replace(/_/g,' ')}
+                      {d.gicEmpanelled && <><span className="sep">•</span> <span style={{color: 'var(--green)', fontWeight: 700}}>GIC Empanelled</span></>}
                     </div>
                   </div>
                   <button className="btn-audit" onClick={runAudit} disabled={auditing}>
@@ -547,7 +548,7 @@ export default function App() {
                   </div>
                 </div>
 
-                {/* The 5 Core Scoring Dimension Indicators */}
+                {/* The 6 Core Scoring Dimension Indicators */}
                 <h3 className="split-header">Scoring dimensions — the Provider Intelligence Index</h3>
                 <div className="dimensions-matrix">
                   <div className="matrix-card">
@@ -600,6 +601,22 @@ export default function App() {
                       <div className="volumetrics">{d.reviewCount ?? 0} reviews analyzed</div>
                     </div>
                   </div>
+                  <div className="matrix-card pii-composite-card">
+                    <h5>PII Composite Score</h5>
+                    <div className="mc-val">{d.piiScore?.toFixed(1)}</div>
+                    <div className="pii-breakdown">
+                      <div className="pii-row"><span>Patient (30%)</span><span>{((d.patientExperienceScore ?? 0) * 0.30).toFixed(1)}</span></div>
+                      <div className="pii-row"><span>Clinical (25%)</span><span>{((d.clinicalQualityScore ?? 0) * 0.25).toFixed(1)}</span></div>
+                      <div className="pii-row"><span>Billing (20%)</span><span>{((d.billingStabilityScore ?? 0) * 0.20).toFixed(1)}</span></div>
+                      <div className="pii-row"><span>Trust (15%)</span><span>{((d.trustScore ?? 0) * 0.15).toFixed(1)}</span></div>
+                      <div className="pii-row"><span>Operational (10%)</span><span>{((d.operationalScore ?? 0) * 0.10).toFixed(1)}</span></div>
+                      <div className="pii-row pii-divider"><span>÷ 0.96</span><span></span></div>
+                      <div className="pii-row"><span>− Fraud Penalty</span><span style={{color: 'var(--red)'}}>{d.fraudRiskScore && d.fraudRiskScore > 20 ? `-${Math.min(15, 15 * ((d.fraudRiskScore - 20) / 80)).toFixed(1)}` : '0.0'}</span></div>
+                    </div>
+                    <div className="mc-footer">
+                      <div className="agent-run-tag"><Activity size={10}/> Composite</div>
+                    </div>
+                  </div>
                 </div>
 
                 <div className={`apple-alert ${riskLvl}`}>
@@ -619,15 +636,34 @@ export default function App() {
                 <div className="apple-grid">
                   <div className="apple-card">
                     <h4>Empanelment & Quality Standards</h4>
-                    <div className="val-row"><span className="val-label">NABH Accreditation</span><span className={`val-data ${d.nabhStatus !== 'NOT_ACCREDITED' ? 'good' : 'bad'}`}>{d.nabhStatus?.replace(/_/g,' ')} {d.nabhGrade}</span></div>
+                    <div className="val-row"><span className="val-label">NABH Accreditation</span><span className={`val-data ${d.nabhStatus !== 'NOT_ACCREDITED' ? 'good' : 'bad'}`}>{d.nabhStatus?.replace(/_/g,' ')} {d.nabhGrade ?? ''}</span></div>
+                    <div className="val-row"><span className="val-label">GIC Empanelled</span><span className={`val-data ${d.gicEmpanelled ? 'good' : ''}`}>{d.gicEmpanelled ? 'Yes' : 'No'}</span></div>
+                    {d.gicTotalScore && <div className="val-row"><span className="val-label">Total Objective Score</span><span className="val-data">{d.gicTotalScore}</span></div>}
+                    {d.gicRohiniId && <div className="val-row"><span className="val-label">Rohini ID</span><span className="val-data" style={{fontSize:'0.7rem', fontFamily:'monospace'}}>{d.gicRohiniId}</span></div>}
                     <div className="val-row"><span className="val-label">CGHS Panel Empanelled</span><span className={`val-data ${d.cghsEmpanelled ? 'good' : ''}`}>{d.cghsEmpanelled ? 'Yes' : 'No'}</span></div>
                     <div className="val-row"><span className="val-label">ECHS Empanelled</span><span className={`val-data ${d.echsEmpanelled ? 'good' : ''}`}>{d.echsEmpanelled ? 'Yes' : 'No'}</span></div>
                   </div>
                   <div className="apple-card">
-                    <h4>Digital Health & Scale</h4>
+                    <h4>Infrastructure & Scale</h4>
                     <div className="val-row"><span className="val-label">ABDM HFR Status</span><span className={`val-data ${d.abdmReadiness ? 'good' : 'bad'}`}>{d.abdmReadiness ? 'Registered' : 'Pending'}</span></div>
-                    <div className="val-row"><span className="val-label">Bed Registry Capacity</span><span className="val-data">{d.bedCount} beds</span></div>
+                    <div className="val-row"><span className="val-label">Total Beds</span><span className="val-data">{d.bedCount ?? '—'}</span></div>
+                    {d.icuBeds && <div className="val-row"><span className="val-label">ICU Beds</span><span className="val-data">{d.icuBeds}</span></div>}
+                    {d.ventilatorCount != null && d.ventilatorCount > 0 && <div className="val-row"><span className="val-label">Ventilators</span><span className="val-data">{d.ventilatorCount}</span></div>}
+                    {d.ownershipType && <div className="val-row"><span className="val-label">Ownership</span><span className="val-data">{d.ownershipType}</span></div>}
                   </div>
+                  {d.gicEmpanelled && (
+                    <div className="apple-card">
+                      <h4>GIC Compliance & Facilities</h4>
+                      <div className="val-row"><span className="val-label">Pharmacy</span><span className={`val-data ${d.hasPharmacy ? 'good' : ''}`}>{d.hasPharmacy ? 'Yes' : 'No'}</span></div>
+                      <div className="val-row"><span className="val-label">Fire NOC</span><span className={`val-data ${d.hasFireNoc ? 'good' : 'bad'}`}>{d.hasFireNoc ? 'Yes' : 'No'}</span></div>
+                      <div className="val-row"><span className="val-label">Blood Bank</span><span className={`val-data ${d.hasBloodBank ? 'good' : ''}`}>{d.hasBloodBank ? 'Yes' : 'No'}</span></div>
+                      <div className="val-row"><span className="val-label">Ambulance</span><span className={`val-data ${d.hasAmbulance ? (d.ambulanceType === 'Outsourced' ? 'warn' : 'good') : ''}`}>{d.hasAmbulance ? (d.ambulanceType || 'Yes') : 'No'}</span></div>
+                      {d.totalDoctors && <div className="val-row"><span className="val-label">Doctors</span><span className="val-data">{d.totalDoctors}</span></div>}
+                      {d.totalNurses && <div className="val-row"><span className="val-label">Nurses</span><span className="val-data">{d.totalNurses}</span></div>}
+                      {d.drBedRatio && d.drBedRatio !== '0' && <div className="val-row"><span className="val-label">Dr:Bed Ratio</span><span className="val-data">1:{d.drBedRatio}</span></div>}
+                      {d.nurseBedRatio && d.nurseBedRatio !== '0' && <div className="val-row"><span className="val-label">Nurse:Bed Ratio</span><span className="val-data">1:{d.nurseBedRatio}</span></div>}
+                    </div>
+                  )}
                 </div>
 
                 <h3 className="split-header">

@@ -225,6 +225,16 @@ body {
 .split-badge.obj { background: var(--blue-bg); color: var(--blue); }
 .split-badge.subj { background: var(--orange-bg); color: var(--orange); }
 
+/* ─── PII Formula ─── */
+.pii-formula { background: var(--surface); border: 1px solid var(--border-light); border-radius: 8px; padding: 10px 16px; margin-bottom: 16px; text-align: center; }
+.pii-formula code { font-size: 0.75rem; font-weight: 600; color: var(--text-secondary); letter-spacing: 0.02em; }
+
+/* ─── PII Composite Card ─── */
+.pii-composite-card .pii-breakdown { display: flex; flex-direction: column; gap: 4px; margin-top: 8px; }
+.pii-composite-card .pii-row { display: flex; justify-content: space-between; font-size: 0.72rem; color: var(--text-secondary); padding: 2px 0; }
+.pii-composite-card .pii-row span:last-child { font-weight: 600; color: var(--text-primary); }
+.pii-composite-card .pii-divider { border-top: 1px solid var(--border-light); margin-top: 4px; padding-top: 4px; }
+
 /* ─── Dimensions Matrix ─── */
 .dimensions-matrix { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 16px; }
 .matrix-card {
@@ -250,6 +260,7 @@ body {
 .val-data { font-size: 0.8rem; font-weight: 700; color: var(--text-primary); }
 .val-data.good { color: var(--green); }
 .val-data.bad { color: var(--red); }
+.val-data.warn { color: var(--orange); }
 
 /* ─── Alerts ─── */
 .apple-alert {

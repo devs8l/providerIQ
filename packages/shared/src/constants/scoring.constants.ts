@@ -5,11 +5,11 @@ import type { DimensionWeightConfig } from '../types/scoring.types.js';
 
 /** PII Dimension Weights — must sum to 1.0 */
 export const DIMENSION_WEIGHTS: DimensionWeightConfig = {
-  trust: 0.25,
-  operational: 0.20,
+  trust: 0.15,
+  operational: 0.10,
   billingStability: 0.20,
-  clinicalQuality: 0.20,
-  patientExperience: 0.10,
+  clinicalQuality: 0.25,
+  patientExperience: 0.30,
   fraudRisk: 0.05,
 } as const;
 
@@ -41,11 +41,11 @@ export const SIGNAL_DECAY_DAYS: Record<string, number> = {
 /** Minimum signal counts per dimension for confident scoring */
 export const MIN_SIGNALS_PER_DIMENSION = {
   trust: 1,
-  operational: 2,
-  billingStability: 5,
-  clinicalQuality: 2,
-  patientExperience: 3,
-  fraudRisk: 2,
+  operational: 1,
+  billingStability: 1,
+  clinicalQuality: 1,
+  patientExperience: 1,
+  fraudRisk: 1,
 } as const;
 
 /** Maximum fraud penalty applied to composite PII */

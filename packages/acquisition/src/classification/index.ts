@@ -33,14 +33,32 @@ export function classifyEvidence(records: RawEvidence[]): ClassifiedEvidence[] {
 export interface Signal {
   id: string;
   facilityId: string;
+  category: string;
   dimension: string;
   indicator: string;
+  source: string;
   value: number;
   sentiment: string;
   confidence: number;
+  weight: number;
+  capturedAt: Date;
+  isDecayed: boolean;
   evidenceId: string;
   text?: string;
 }
+
+/** Map aspect names to scoring categories */
+const ASPECT_TO_CATEGORY: Record<string, string> = {
+  wait_time: 'OPERATIONAL',
+  facility: 'OPERATIONAL',
+  staff_behavior: 'PATIENT',
+  billing_issues: 'BILLING',
+  clinical_care: 'CLINICAL',
+  communication: 'PATIENT',
+  safety_issue: 'FRAUD',
+  post_op: 'CLINICAL',
+  general: 'PATIENT',
+};
 
 export function mapClassifiedEvidenceToSignals(opts: {
   facilityId: string;
@@ -54,14 +72,26 @@ export function mapClassifiedEvidenceToSignals(opts: {
   for (const ce of classifiedEvidence) {
     const evidence = evidenceById.get(ce.id);
     for (const cl of ce.classifications) {
+      // Convert sentiment to 0-1 value scale (positive=0.8-1.0, neutral=0.5, negative=0.0-0.3)
+      const rating = evidence?.rating ?? 3;
+      let value: number;
+      if (cl.sentiment === 'positive') value = 0.6 + (rating / 5) * 0.4; // 0.6–1.0
+      else if (cl.sentiment === 'negative') value = Math.max(0, (rating / 5) * 0.4); // 0.0–0.4
+      else value = 0.5;
+
       signals.push({
         id: `sig-${idx++}`,
         facilityId,
+        category: ASPECT_TO_CATEGORY[cl.aspect] ?? 'PATIENT',
         dimension: cl.aspect,
         indicator: `${cl.aspect}_${cl.sentiment}`,
-        value: cl.sentiment === 'positive' ? 1 : cl.sentiment === 'negative' ? -1 : 0,
+        source: 'GOOGLE_MAPS',
+        value,
         sentiment: cl.sentiment,
         confidence: cl.confidence,
+        weight: 1.0,
+        capturedAt: evidence?.publishedAt ? new Date(evidence.publishedAt) : new Date(),
+        isDecayed: false,
         evidenceId: ce.id,
         text: evidence?.text?.slice(0, 200),
       });

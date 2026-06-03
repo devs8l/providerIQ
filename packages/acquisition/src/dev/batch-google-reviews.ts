@@ -33,9 +33,9 @@ const API_KEYS: string[] = [
 ].filter(Boolean);
 
 // Sort orders to maximize unique review coverage (Apify uses camelCase)
-const SORT_ORDERS = ['newest', 'mostRelevant', 'highestRanking', 'lowestRanking'] as const;
+const SORT_ORDERS = ['newest'] as const;
 
-const BATCH_SIZE = 250; // 250 × 4 sort orders ≈ 1000 reviews per hospital
+const BATCH_SIZE = 1000; // Pull all reviews in one shot
 
 // ─── Hospital Seeds ──────────────────────────────────────────────────────────
 
@@ -48,34 +48,16 @@ interface HospitalSeed {
 
 const HOSPITAL_SEEDS: HospitalSeed[] = [
   {
-    id: 'manipal-whitefield-blr',
-    name: 'Manipal Hospital Whitefield',
-    city: 'Bangalore',
-    googleMapsUrl: 'https://maps.app.goo.gl/R3wrV3fH8XCdkaVp7',
+    id: 'newera-hospitals',
+    name: 'NewEra Hospitals',
+    city: 'Unknown',
+    googleMapsUrl: 'https://maps.app.goo.gl/TmyggRLmc2iABoL58',
   },
   {
-    id: 'tata-memorial-mumbai',
-    name: 'Tata Memorial Hospital',
-    city: 'Mumbai',
-    googleMapsUrl: 'https://maps.app.goo.gl/PHoBaeTiCqmKGrAu6',
-  },
-  {
-    id: 'bombay-hospital-indore',
-    name: 'Bombay Hospital Indore',
-    city: 'Indore',
-    googleMapsUrl: 'https://maps.app.goo.gl/qmEsEzw52JhFNetx6',
-  },
-  {
-    id: 'nanavati-max-mumbai',
-    name: 'Nanavati Max Super Speciality Hospital',
-    city: 'Mumbai',
-    googleMapsUrl: 'https://maps.app.goo.gl/NbbR4CzzCNHY1bh76',
-  },
-  {
-    id: 'apollo-indore',
-    name: 'Apollo Hospitals Indore',
-    city: 'Indore',
-    googleMapsUrl: 'https://maps.app.goo.gl/CKg24fB9SN4C9ZQH7',
+    id: 'nurture-hospital',
+    name: 'Nurture Hospital',
+    city: 'Unknown',
+    googleMapsUrl: 'https://maps.app.goo.gl/7H4xzYHxRKRkVrQa8',
   },
 ];
 
@@ -97,7 +79,7 @@ async function main(): Promise<void> {
   await store.ensureTable();
   console.log('Table ready.\n');
 
-  let keyIndex = 0;
+  let keyIndex = 2; // keys 0-1 exhausted
   let totalNewReviews = 0;
   let consecutiveEmptyBatches = 0;
 
@@ -106,13 +88,7 @@ async function main(): Promise<void> {
     const existingCount = await store.getCount(seed.id, 'GOOGLE_MAPS_REVIEWS');
     console.log(`  Existing reviews in DB: ${existingCount}`);
 
-    // Skip hospitals that already have enough reviews
-    if (existingCount >= 1000) {
-      console.log(`  Skipping — already has ${existingCount} reviews.\n`);
-      continue;
-    }
-
-    consecutiveEmptyBatches = 0; // reset per hospital
+    consecutiveEmptyBatches = 0;
 
     for (const sort of SORT_ORDERS) {
       if (consecutiveEmptyBatches >= 2) {
