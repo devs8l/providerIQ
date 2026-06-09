@@ -119,7 +119,91 @@ export const appRouter = router({
         });
       }
 
-      return { facility: { ...facility, reviewCount: facility._count.reviews } };
+      // Compute real positivity index from ALL reviews (not just the 50 returned)
+      const reviewStats = await ctx.db.review.aggregate({
+        where: { facilityId: input.id },
+        _avg: { sentimentScore: true, rating: true },
+        _count: { _all: true, rating: true },
+      });
+      const positiveCount = await ctx.db.review.count({
+        where: { facilityId: input.id, rating: { gte: 4 } },
+      });
+      const totalRated = reviewStats._count.rating ?? 0;
+      const positivityIndex = totalRated > 0 ? Math.round((positiveCount / totalRated) * 100) : null;
+      const avgRating = reviewStats._avg.rating ?? null;
+
+      return { facility: { ...facility, reviewCount: facility._count.reviews, positivityIndex, avgRating } };
+    }),
+
+  // Timeline heatmap: dimension scores per month for a single hospital
+  getHospitalTimeline: publicProcedure
+    .input(z.object({ id: z.string(), months: z.number().default(12) }))
+    .query(async ({ input, ctx }) => {
+      const reviews = await ctx.db.review.findMany({
+        where: {
+          facilityId: input.id,
+          reviewDate: { not: null },
+          rating: { not: null },
+        },
+        select: { rating: true, themes: true, sentimentScore: true, reviewDate: true },
+        orderBy: { reviewDate: 'desc' },
+      });
+
+      // Dimension → theme keyword mapping
+      const DIM_MAP: Record<string, string[]> = {
+        patient: ['staff', 'cleanliness', 'wait_time'],
+        clinical: ['clinical', 'emergency'],
+        billing: ['billing'],
+        trust: [],
+        operational: ['emergency', 'wait_time'],
+      };
+
+      // Build last N months buckets (YYYY-MM)
+      const now = new Date();
+      const buckets: string[] = [];
+      for (let i = input.months - 1; i >= 0; i--) {
+        const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+        buckets.push(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`);
+      }
+
+      // Group reviews by month
+      const monthly: Record<string, typeof reviews> = {};
+      for (const b of buckets) monthly[b] = [];
+      for (const r of reviews) {
+        if (!r.reviewDate) continue;
+        const d = new Date(r.reviewDate);
+        const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+        if (monthly[key]) monthly[key].push(r);
+      }
+
+      // Per dimension × month compute avg rating
+      const timeline = Object.entries(DIM_MAP).map(([dim, keywords]) => ({
+        dimension: dim,
+        months: buckets.map(month => {
+          const monthReviews = monthly[month] ?? [];
+          let relevant = monthReviews;
+          // Filter by themes when keywords specified; trust uses all (overall sentiment)
+          if (keywords.length > 0) {
+            relevant = monthReviews.filter(r =>
+              r.themes && keywords.some(k => r.themes!.includes(k))
+            );
+          }
+          if (relevant.length === 0) {
+            return { month, score: null as number | null, count: 0 };
+          }
+          // Average rating (0-5 scale)
+          const avg = relevant.reduce((s, r) => s + (r.rating ?? 0), 0) / relevant.length;
+          return { month, score: Math.round(avg * 100) / 100, count: relevant.length };
+        }),
+      }));
+
+      // Positivity index: % of reviews >= 4 stars (0-100 scale)
+      const positiveCount = reviews.filter(r => (r.rating ?? 0) >= 4).length;
+      const positivityIndex = reviews.length > 0
+        ? Math.round((positiveCount / reviews.length) * 1000) / 10
+        : 0;
+
+      return { timeline, totalReviews: reviews.length, positivityIndex };
     }),
 
   // Secure intelligence calculation trigger

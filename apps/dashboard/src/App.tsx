@@ -3,6 +3,7 @@ import { Shield, Heart, TrendingUp, Search, Building2, MapPin, Database, Users, 
 import LiveCrawlerPage from './LiveCrawlerPage';
 import RawJsonTab from './RawJsonTab';
 import AcquisitionPage from './AcquisitionPage';
+import HeatmapSection from './HeatmapSection';
 import './App.css';
 
 const API = import.meta.env.PROD ? '/api/trpc' : 'http://localhost:4000/trpc';
@@ -298,13 +299,13 @@ export default function App() {
         </div>
         <div className="topbar-tabs">
           <button className={`tab-btn ${tab==='intelligence'?'active':''}`} onClick={()=>setTab('intelligence')}>Provider Intelligence</button>
-          <button className={`tab-btn ${tab==='swarm'?'active':''}`} onClick={()=>setTab('swarm')}><Bot size={12}/> AI Agent Activities</button>
+          <button className={`tab-btn ${tab==='heatmap'?'active':''}`} onClick={()=>setTab('heatmap')}>Dashboards</button>
+          <button className={`tab-btn ${tab==='swarm'?'active':''}`} onClick={()=>setTab('swarm')}><Bot size={12}/> AI Agents</button>
           <button className={`tab-btn ${tab==='sources'?'active':''}`} onClick={()=>setTab('sources')}><Database size={12}/> Sources</button>
           <button className={`tab-btn ${tab==='connections'?'active':''}`} onClick={()=>setTab('connections')}><KeyRound size={12}/> Connections</button>
-          <button className={`tab-btn ${tab==='acquisition'?'active':''}`} onClick={()=>setTab('acquisition')}><Search size={12}/> Acquisition Pipeline</button>
-          <button className={`tab-btn ${tab==='provenance'?'active':''}`} onClick={()=>setTab('provenance')}><Activity size={12}/> Provenance & Crawl</button>
-          <button className={`tab-btn ${tab==='rawjson'?'active':''}`} onClick={()=>setTab('rawjson')}><Database size={12}/> Raw Reviews JSON</button>
-          <button className={`tab-btn ${tab==='framework'?'active':''}`} onClick={()=>setTab('framework')}><Layers size={12}/> Methodology & Quality</button>
+          <button className={`tab-btn ${tab==='provenance'?'active':''}`} onClick={()=>setTab('provenance')}><Activity size={12}/> Provenance</button>
+          <button className={`tab-btn ${tab==='rawjson'?'active':''}`} onClick={()=>setTab('rawjson')}><Database size={12}/> Raw JSON</button>
+          <button className={`tab-btn ${tab==='framework'?'active':''}`} onClick={()=>setTab('framework')}><Layers size={12}/> Methodology</button>
         </div>
         <div className="topbar-right">
           <div className="inquantic-brand">
@@ -408,6 +409,8 @@ export default function App() {
         <LiveCrawlerPage />
       ) : tab === 'rawjson' ? (
         <RawJsonTab />
+      ) : tab === 'heatmap' ? (
+        <HeatmapSection facilities={facs} />
       ) : tab === 'framework' ? (
         <div className="agents-page">
           <h2>Scoring Methodology & Quality Gates</h2>
@@ -677,7 +680,8 @@ export default function App() {
                     <h4>Patient Satisfaction & Volume</h4>
                     <div className="val-row"><span className="val-label">Google Maps Crawled Reviews</span><span className="val-data">{d.reviewCount ?? d.reviews?.filter((r:any)=>r.source==='GOOGLE_MAPS').length ?? 0}</span></div>
                     <div className="val-row"><span className="val-label">Practo Ratings Count</span><span className="val-data">{d.reviews?.filter((r:any)=>r.source==='PRACTO').length ?? 0}</span></div>
-                    <div className="val-row"><span className="val-label">NLP Positivity Index</span><span className={`val-data ${(d.reviews?.[0]?.sentimentScore??0)>0.6?'good':'bad'}`}>{d.reviews?.length ? `${(d.reviews.reduce((a:number,r:any)=>a+(r.sentimentScore??0),0)/d.reviews.length*100).toFixed(0)}% Positive` : 'N/A'}</span></div>
+                    <div className="val-row"><span className="val-label">NLP Positivity Index</span><span className={`val-data ${(d as any).positivityIndex != null ? ((d as any).positivityIndex >= 70 ? 'good' : 'bad') : ''}`}>{(d as any).positivityIndex != null ? `${(d as any).positivityIndex}% Positive` : 'N/A'}</span></div>
+                    {(d as any).avgRating != null && <div className="val-row"><span className="val-label">Avg Google Rating</span><span className={`val-data ${(d as any).avgRating >= 4 ? 'good' : (d as any).avgRating >= 3 ? '' : 'bad'}`}>{(d as any).avgRating.toFixed(1)} / 5.0</span></div>}
                   </div>
                   <div className="apple-card">
                     <h4>Public & News Ecosystem</h4>
