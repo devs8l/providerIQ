@@ -1,7 +1,10 @@
 import { useState, useEffect } from 'react';
-import { Shield, Heart, TrendingUp, Search, Building2, MapPin, Database, Users, Bot, Cpu, Globe, CheckCircle2, RefreshCw, KeyRound, Wifi, ArrowUpRight, ArrowDownRight, Minus, Info, Sparkles, Lock, Activity, Layers } from 'lucide-react';
+import { Shield, Heart, TrendingUp, Search, Building2, MapPin, Database, Users, Bot, Cpu, Globe, CheckCircle2, RefreshCw, KeyRound, Wifi, ArrowUpRight, ArrowDownRight, Minus, Info, Sparkles, Lock, Activity, Layers, Play } from 'lucide-react';
 import LiveCrawlerPage from './LiveCrawlerPage';
 import RawJsonTab from './RawJsonTab';
+import AcquisitionPage from './AcquisitionPage';
+import HeatmapSection from './HeatmapSection';
+import AgentTerminal from './AgentTerminal';
 import './App.css';
 
 const API = import.meta.env.PROD ? '/api/trpc' : 'http://localhost:4000/trpc';
@@ -9,12 +12,12 @@ const API = import.meta.env.PROD ? '/api/trpc' : 'http://localhost:4000/trpc';
 
 
 const AGENTS = [
-  { name: 'Orchestrator Agent', icon: <Cpu size={16}/>, desc: 'Plans the research pipeline, dispatches sub-agents, merges results, and enforces scoring rules.', lastActivity: 'Consolidated Medanta scoring matrix & pushed clinical quality rating.', status: 'Idle (Listening)', lastRun: '2 mins ago' },
-  { name: 'Registry Agent', icon: <Database size={16}/>, desc: 'Pulls and validates structured data from ABDM, NABH, and CGHS registries.', lastActivity: 'Validated ABDM Hospital Facility Registry (HFR) credentials & beds registry.', status: 'Active (Monitoring)', lastRun: '12 mins ago' },
-  { name: 'Web Research Agent', icon: <Globe size={16}/>, desc: 'Crawls unstructured news sources, consumer court filings, and official portals.', lastActivity: 'Completed Tavily search for recent media disputes & local coverage reports.', status: 'Idle (Listening)', lastRun: '1 hr ago' },
-  { name: 'Sentiment Agent', icon: <Heart size={16}/>, desc: 'Applies NLP to patient reviews, Practo comments, and public feedback networks.', lastActivity: 'NLP parsed 142 recent Google Maps review sentiment vectors.', status: 'Active (Crawling)', lastRun: '15 mins ago' },
-  { name: 'Billing Analyst', icon: <TrendingUp size={16}/>, desc: 'Scans NHCX data feeds for cost variances, length-of-stay outliers, and package disputes.', lastActivity: 'Matched 145 claims lines against procedural averages (package variance: 4.2%).', status: 'Active (Monitoring)', lastRun: '5 mins ago' },
-  { name: 'Supervisor Agent', icon: <Shield size={16}/>, desc: 'Cross-checks findings across agents, validates fraud risk levels, and signs PII indices.', lastActivity: 'Certified Medanta compliance rating. Signed off fraud risk level as LOW.', status: 'Active (Validating)', lastRun: 'Just now' },
+  { name: 'Orchestrator Agent', icon: <Cpu size={16}/>, desc: 'Plans the research pipeline, dispatches sub-agents, merges their signals, and runs the scoring engine.', lastActivity: 'Coordinates Registry, Sentiment, Billing & Web Research agents in parallel, then runs the Supervisor and PII scoring.', status: 'Ready · On-demand', runtime: 'Pipeline coordinator' },
+  { name: 'Registry Agent', icon: <Database size={16}/>, desc: 'Validates structured facility data from ABDM, NABH, GIC and CGHS registries.', lastActivity: 'Deterministically derives TRUST & OPERATIONAL signals from accreditation, empanelment, bed capacity and staffing fields.', status: 'Ready · Deterministic', runtime: 'No LLM · DB fields' },
+  { name: 'Web Research Agent', icon: <Globe size={16}/>, desc: 'Assesses a facility\u2019s public footprint: litigation, regulatory actions, and credible news.', lastActivity: 'Reports only confidently-known public evidence; returns neutral TRUST & FRAUD signals when no evidence is found (anti-fabrication).', status: 'Ready · On-demand', runtime: 'LLM · gemini-3.5-flash' },
+  { name: 'Sentiment Agent', icon: <Heart size={16}/>, desc: 'Applies context-aware NLP to real patient reviews across PATIENT and CLINICAL dimensions.', lastActivity: 'Emits 8 review-derived signals: staff behaviour, wait time, facility, communication, treatment outcomes, safety, post-op and billing complaints.', status: 'Live · Runnable', runtime: 'LLM · gemini-3.5-flash', live: 'sentiment' as const },
+  { name: 'Billing Analyst', icon: <TrendingUp size={16}/>, desc: 'Isolates money-related patient accounts to surface billing transparency and fraud-risk signals.', lastActivity: 'Classifies billing grievances by substance and flags corroborated fraud patterns; emits BILLING & FRAUD signals.', status: 'Live · Runnable', runtime: 'LLM · gemini-3.5-flash', live: 'billing' as const },
+  { name: 'Supervisor Agent', icon: <Shield size={16}/>, desc: 'Cross-checks findings across agents, corroborates fraud across sources, and issues a verdict.', lastActivity: 'Counts independent fraud corroborations, detects contradictions, and signs the PII index verdict (VALIDATED \u2192 ESCALATED).', status: 'Ready · Deterministic', runtime: 'No LLM · audit logic' },
 ];
 
 const DATA_SOURCES = [
@@ -136,6 +139,7 @@ export default function App() {
   const [tab, setTab] = useState('provenance');
   const [q, setQ] = useState('');
   const [auditing, setAuditing] = useState(false);
+  const [terminalAgent, setTerminalAgent] = useState<'sentiment' | 'billing' | null>(null);
   const [animScore, setAnimScore] = useState<number | null>(null);
   const [deltas, setDeltas] = useState<any>({});
   const [vols, setVols] = useState<any>({});
@@ -297,12 +301,13 @@ export default function App() {
         </div>
         <div className="topbar-tabs">
           <button className={`tab-btn ${tab==='intelligence'?'active':''}`} onClick={()=>setTab('intelligence')}>Provider Intelligence</button>
-          <button className={`tab-btn ${tab==='swarm'?'active':''}`} onClick={()=>setTab('swarm')}><Bot size={12}/> AI Agent Activities</button>
+          <button className={`tab-btn ${tab==='heatmap'?'active':''}`} onClick={()=>setTab('heatmap')}>Dashboards</button>
+          <button className={`tab-btn ${tab==='swarm'?'active':''}`} onClick={()=>setTab('swarm')}><Bot size={12}/> AI Agents</button>
           <button className={`tab-btn ${tab==='sources'?'active':''}`} onClick={()=>setTab('sources')}><Database size={12}/> Sources</button>
           <button className={`tab-btn ${tab==='connections'?'active':''}`} onClick={()=>setTab('connections')}><KeyRound size={12}/> Connections</button>
-          <button className={`tab-btn ${tab==='provenance'?'active':''}`} onClick={()=>setTab('provenance')}><Activity size={12}/> Provenance & Crawl</button>
-          <button className={`tab-btn ${tab==='rawjson'?'active':''}`} onClick={()=>setTab('rawjson')}><Database size={12}/> Raw Reviews JSON</button>
-          <button className={`tab-btn ${tab==='framework'?'active':''}`} onClick={()=>setTab('framework')}><Layers size={12}/> Methodology & Quality</button>
+          <button className={`tab-btn ${tab==='provenance'?'active':''}`} onClick={()=>setTab('provenance')}><Activity size={12}/> Provenance</button>
+          <button className={`tab-btn ${tab==='rawjson'?'active':''}`} onClick={()=>setTab('rawjson')}><Database size={12}/> Raw JSON</button>
+          <button className={`tab-btn ${tab==='framework'?'active':''}`} onClick={()=>setTab('framework')}><Layers size={12}/> Methodology</button>
         </div>
         <div className="topbar-right">
           <div className="inquantic-brand">
@@ -317,16 +322,30 @@ export default function App() {
           <p>ProviderIQ utilizes a dynamic, multi-agent AI pipeline scanning, analyzing, and corroborating objective registries and subjective public sentiment indices.</p>
           <div className="agents-grid">
             {AGENTS.map(a => (
-              <div key={a.name} className="agent-box">
-                <div style={{color: '#706E6B', marginBottom: 12}}>{a.icon}</div>
+              <div key={a.name} className={`agent-box${a.live ? ' agent-box-live' : ''}`}>
+                <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start'}}>
+                  <div style={{color: a.live ? 'var(--accent)' : '#706E6B', marginBottom: 12}}>{a.icon}</div>
+                  {a.live && (
+                    <span className="agent-live-tag">
+                      <span className="agent-live-dot"/> LIVE
+                      <button
+                        className="agent-run-btn"
+                        onClick={() => setTerminalAgent(a.live!)}
+                        title="Run live analysis"
+                      >
+                        <Play size={12}/>
+                      </button>
+                    </span>
+                  )}
+                </div>
                 <h3 style={{fontWeight: 700, margin: '0 0 8px'}}>{a.name}</h3>
                 <p>{a.desc}</p>
                 <div style={{borderTop: '1px solid var(--border-light)', paddingTop: 10, marginTop: 10}}>
-                  <div style={{fontSize: '0.65rem', fontWeight: 700, color: 'var(--text-secondary)'}}>Last Activity:</div>
-                  <div style={{fontSize: '0.75rem', color: 'var(--text-primary)', marginTop: 4}}>{a.lastActivity}</div>
+                  <div style={{fontSize: '0.65rem', fontWeight: 700, color: 'var(--text-secondary)'}}>What it does on a run:</div>
+                  <div style={{fontSize: '0.75rem', color: 'var(--text-primary)', marginTop: 4, lineHeight: 1.5}}>{a.lastActivity}</div>
                   <div style={{display: 'flex', justifyContent: 'space-between', marginTop: 10, fontSize: '0.65rem', color: 'var(--text-tertiary)'}}>
                     <span>Status: <strong>{a.status}</strong></span>
-                    <span>Ran: {a.lastRun}</span>
+                    <span>{a.runtime}</span>
                   </div>
                 </div>
               </div>
@@ -400,89 +419,79 @@ export default function App() {
             ))}
           </div>
         </div>
+      ) : tab === 'acquisition' ? (
+        <AcquisitionPage />
       ) : tab === 'provenance' ? (
         <LiveCrawlerPage />
       ) : tab === 'rawjson' ? (
         <RawJsonTab />
+      ) : tab === 'heatmap' ? (
+        <HeatmapSection facilities={facs} />
       ) : tab === 'framework' ? (
         <div className="agents-page">
-          <h2>Agentic Framework & Quality Methodology</h2>
-          <p>This tab outlines our world-class, production-ready agentic architecture tailored for GIC requirements.</p>
+          <h2>Scoring Methodology & Quality Gates</h2>
+          <p>How the ProviderIQ Review Agent computes the Provider Intelligence Index from real patient reviews.</p>
           
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px', marginTop: '24px' }}>
             <div className="glass-panel slide-in" style={{ padding: '24px', background: '#fff', border: '1px solid var(--border)' }}>
-              <h3 style={{ color: 'var(--blue)', borderBottom: '2px solid var(--blue)', paddingBottom: '10px', marginBottom: '16px' }}>What We Did (Smart Filters & Gates)</h3>
+              <h3 style={{ color: 'var(--blue)', borderBottom: '2px solid var(--blue)', paddingBottom: '10px', marginBottom: '16px' }}>What We Do (AI Review Analysis)</h3>
               <ul style={{ lineHeight: '1.8', color: 'var(--text-secondary)' }}>
-                <li><strong style={{color: '#0F172A'}}>Deep Meaning Over Basic Words:</strong> We look for true meaning. If someone types "they took extra money", we know it means "fraud", even without the exact word.</li>
-                <li><strong style={{color: '#0F172A'}}>Smart Time Gates (The "10-Day vs 1-Hour" Rule):</strong> We give more weight to a review from a patient who stayed for 10 days in the ICU compared to a walk-in patient who stayed for 1 hour. Longer stay = deeper context and better quality data.</li>
-                <li><strong style={{color: '#0F172A'}}>Local Language Support:</strong> We understand Hindi and Hinglish perfectly, which is how real people speak in India.</li>
-                <li><strong style={{color: '#0F172A'}}>Fake Review Blockers:</strong> If 50 five-star reviews suddenly appear in one day, our gates automatically filter them out as fake.</li>
+                <li><strong style={{color: '#0F172A'}}>Aspect-Based Sentiment Extraction:</strong> Each review is classified into dimensions — clinical quality, billing, patient experience, fraud risk — not just star ratings.</li>
+                <li><strong style={{color: '#0F172A'}}>Temporal Decay Weighting:</strong> Recent reviews (6 months) get full weight. Old reviews (2+ years) get 0.2x. Hospitals can improve or decline.</li>
+                <li><strong style={{color: '#0F172A'}}>Hindi & Hinglish Parsing:</strong> We classify "bahut zyada paisa liya" as a billing complaint and "doctor ne jaan bacha li" as clinical positive.</li>
+                <li><strong style={{color: '#0F172A'}}>Fake Review Detection:</strong> Burst detection (15+ same-rating reviews in 48 hours), template matching, and volume-to-size gating flag astroturfed profiles.</li>
+                <li><strong style={{color: '#0F172A'}}>Severity Weighting:</strong> A single negligence death report outweighs 50 generic "nice hospital" reviews in the fraud dimension.</li>
               </ul>
             </div>
             
             <div className="glass-panel slide-in" style={{ padding: '24px', background: '#fff', border: '1px solid var(--border)', animationDelay: '0.1s' }}>
-              <h3 style={{ color: 'var(--orange)', borderBottom: '2px solid var(--orange)', paddingBottom: '10px', marginBottom: '16px' }}>What We Skipped (The Old Way)</h3>
+              <h3 style={{ color: 'var(--orange)', borderBottom: '2px solid var(--orange)', paddingBottom: '10px', marginBottom: '16px' }}>Quality Gates (Applied Before Scoring)</h3>
               <ul style={{ lineHeight: '1.8', color: 'var(--text-secondary)' }}>
-                <li><strong style={{color: '#0F172A'}}>Basic Star Ratings:</strong> A 4-star average means nothing if the few 1-star reviews are exposing major medical negligence. We skip simple averages.</li>
-                <li><strong style={{color: '#0F172A'}}>Slow Human Checking:</strong> We skipped slow manual work. Our AI agents verify the data in seconds.</li>
-                <li><strong style={{color: '#0F172A'}}>Basic Web Bots:</strong> We do not use old scraping bots. We use a team of smart AI agents that cross-check each other's work for perfect accuracy.</li>
+                <li><strong style={{color: '#0F172A'}}>Gate 1 — Spam Filter:</strong> Reviews &lt;10 chars, emoji-only, or duplicates are dropped. Generic one-liners get 0.1x weight.</li>
+                <li><strong style={{color: '#0F172A'}}>Gate 2 — Temporal Decay:</strong> 6mo: 1.0x → 12mo: 0.7x → 2yr: 0.4x → older: 0.2x</li>
+                <li><strong style={{color: '#0F172A'}}>Gate 3 — Burst Detection:</strong> 15+ same-rating reviews in 48 hours → batch reduced to 0.3x weight.</li>
+                <li><strong style={{color: '#0F172A'}}>Gate 4 — Detail Bonus:</strong> Reviews &gt;200 chars mentioning specific events, doctor names, or dates get 1.5x weight.</li>
               </ul>
             </div>
           </div>
           
           <div className="glass-panel slide-in" style={{ padding: '24px', background: '#fff', border: '1px solid var(--border)', marginTop: '24px', animationDelay: '0.15s' }}>
-            <h3 style={{ color: 'var(--blue)', borderBottom: '2px solid var(--blue)', paddingBottom: '10px', marginBottom: '16px' }}>10-Point Social Scrolling & Web Gating (Public Data Extraction)</h3>
+            <h3 style={{ color: 'var(--blue)', borderBottom: '2px solid var(--blue)', paddingBottom: '10px', marginBottom: '16px' }}>Scoring Dimensions (Review-Derived Only)</h3>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
               <div style={{ background: '#F8FAFC', padding: '16px', borderRadius: '8px', border: '1px solid #E2E8F0' }}>
-                <strong style={{ color: '#0F172A', display: 'block', marginBottom: '4px' }}>1. X (Twitter) Sentiment Pulse</strong>
-                <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Scroll and extract tweets tagging the hospital to find real-time frustration over billing, bed availability, or negligence.</span>
+                <strong style={{ color: '#0F172A', display: 'block', marginBottom: '4px' }}>1. Patient Experience — 30%</strong>
+                <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Staff behavior, communication, empathy, wait times, room quality, food. Directly measurable from how patients describe their stay.</span>
               </div>
               <div style={{ background: '#F8FAFC', padding: '16px', borderRadius: '8px', border: '1px solid #E2E8F0' }}>
-                <strong style={{ color: '#0F172A', display: 'block', marginBottom: '4px' }}>2. Glassdoor & AmbitionBox Staff Sentiment</strong>
-                <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Scrape anonymous employee reviews. High nurse attrition or complaints of "unethical sales targets" strongly correlate with patient fraud.</span>
+                <strong style={{ color: '#0F172A', display: 'block', marginBottom: '4px' }}>2. Clinical Quality — 25%</strong>
+                <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Doctor competence, treatment outcomes, diagnosis accuracy, surgery success, post-op recovery. Extracted from detailed patient narratives.</span>
               </div>
               <div style={{ background: '#F8FAFC', padding: '16px', borderRadius: '8px', border: '1px solid #E2E8F0' }}>
-                <strong style={{ color: '#0F172A', display: 'block', marginBottom: '4px' }}>3. Instagram Geo-Tag Auditing</strong>
-                <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Analyze patient stories and posts geo-tagged at the hospital for visual proof of facility conditions and crowding.</span>
+                <strong style={{ color: '#0F172A', display: 'block', marginBottom: '4px' }}>3. Billing Transparency — 20%</strong>
+                <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Hidden charges, overcharging, insurance rejection, unnecessary tests, cost fairness. Critical signal for claims fraud exposure.</span>
               </div>
               <div style={{ background: '#F8FAFC', padding: '16px', borderRadius: '8px', border: '1px solid #E2E8F0' }}>
-                <strong style={{ color: '#0F172A', display: 'block', marginBottom: '4px' }}>4. YouTube Patient Vlogs & Transcripts</strong>
-                <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Parse transcripts of regional language YouTube videos where rural patients describe their treatment experience and out-of-pocket costs.</span>
+                <strong style={{ color: '#0F172A', display: 'block', marginBottom: '4px' }}>4. Trust & Credibility — 15%</strong>
+                <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Meta-analysis of review authenticity: rating distribution, burst patterns, review age spread, volume-to-hospital-size ratio.</span>
               </div>
               <div style={{ background: '#F8FAFC', padding: '16px', borderRadius: '8px', border: '1px solid #E2E8F0' }}>
-                <strong style={{ color: '#0F172A', display: 'block', marginBottom: '4px' }}>5. Reddit (City Subreddits) Discussions</strong>
-                <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Scan long-form community discussions (e.g., r/India, r/Mumbai) where locals warn others about notorious hospitals or doctors.</span>
+                <strong style={{ color: '#0F172A', display: 'block', marginBottom: '4px' }}>5. Fraud Risk — 10% (penalty)</strong>
+                <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Forced admissions, unnecessary surgeries, negligence deaths, consumer court mentions, "held hostage" accounts. High-severity, low-frequency.</span>
               </div>
               <div style={{ background: '#F8FAFC', padding: '16px', borderRadius: '8px', border: '1px solid #E2E8F0' }}>
-                <strong style={{ color: '#0F172A', display: 'block', marginBottom: '4px' }}>6. Local News Comment Sections</strong>
-                <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Scrape the comment sections of regional news articles (Dainik Bhaskar, TOI) about the hospital to catch unreported local sentiment.</span>
-              </div>
-              <div style={{ background: '#F8FAFC', padding: '16px', borderRadius: '8px', border: '1px solid #E2E8F0' }}>
-                <strong style={{ color: '#0F172A', display: 'block', marginBottom: '4px' }}>7. Quora Medical Q&A Threads</strong>
-                <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Extract answers from local users asking "Is [Hospital] good for surgery?" to catch astroturfing or genuine red flags.</span>
-              </div>
-              <div style={{ background: '#F8FAFC', padding: '16px', borderRadius: '8px', border: '1px solid #E2E8F0' }}>
-                <strong style={{ color: '#0F172A', display: 'block', marginBottom: '4px' }}>8. Consumer Complaints Forums (MouthShut)</strong>
-                <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Scrape public forums like Indian Consumer Complaints for deep, multi-paragraph accounts of medical extortion and hidden charges.</span>
-              </div>
-              <div style={{ background: '#F8FAFC', padding: '16px', borderRadius: '8px', border: '1px solid #E2E8F0' }}>
-                <strong style={{ color: '#0F172A', display: 'block', marginBottom: '4px' }}>9. JustDial & Practo Discrepancy Checks</strong>
-                <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Compare the review volume and sentiment across local medical directories against Google Maps to spot manipulated ratings.</span>
-              </div>
-              <div style={{ background: '#F8FAFC', padding: '16px', borderRadius: '8px', border: '1px solid #E2E8F0' }}>
-                <strong style={{ color: '#0F172A', display: 'block', marginBottom: '4px' }}>10. Hospital Categorization Gate (Size vs Volume)</strong>
-                <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>If a small 10-bed Tier-3 hospital has 5,000 positive reviews online, our gating logic flags it as mathematically improbable (Astroturfing).</span>
+                <strong style={{ color: '#0F172A', display: 'block', marginBottom: '4px' }}>PII Composite Formula</strong>
+                <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', fontFamily: 'monospace' }}>PII = (Patient×0.30 + Clinical×0.25 + Billing×0.20 + Trust×0.15) − FraudPenalty</span>
               </div>
             </div>
           </div>
           
           <div className="glass-panel slide-in" style={{ padding: '24px', background: '#F8FAFC', border: '1px solid var(--border-light)', marginTop: '24px', animationDelay: '0.2s' }}>
-            <h3 style={{ color: 'var(--green)', display: 'flex', alignItems: 'center', gap: '8px' }}><Cpu size={20}/> 2026 Agent Framework Readiness</h3>
-            <p style={{ color: 'var(--text-secondary)', marginBottom: '16px' }}>We are harnessing this advanced architecture to ensure top-quality data and top-quality work that is 100% verified and validated. This is a true 2026-ready AI Agent framework, ready for massive cloud scale.</p>
-            <div style={{ display: 'flex', gap: '16px' }}>
-               <div style={{ background: '#fff', padding: '12px 20px', borderRadius: '8px', border: '1px solid #E2E8F0', fontWeight: '700', color: '#334155', display: 'flex', alignItems: 'center', gap: '8px' }}><Globe size={16}/> High-Speed UI</div>
-               <div style={{ background: '#fff', padding: '12px 20px', borderRadius: '8px', border: '1px solid #E2E8F0', fontWeight: '700', color: '#334155', display: 'flex', alignItems: 'center', gap: '8px' }}><Database size={16}/> Verified Data Pools</div>
-               <div style={{ background: '#fff', padding: '12px 20px', borderRadius: '8px', border: '1px solid #E2E8F0', fontWeight: '700', color: '#334155', display: 'flex', alignItems: 'center', gap: '8px' }}><Shield size={16}/> Validated Quality Architecture</div>
+            <h3 style={{ color: 'var(--green)', display: 'flex', alignItems: 'center', gap: '8px' }}><Cpu size={20}/> Key Design Principles</h3>
+            <p style={{ color: 'var(--text-secondary)', marginBottom: '16px' }}>We only score what reviews can actually tell us. Registry data (NABH, beds, ABDM) is displayed separately as objective context — never mixed into review-derived scores.</p>
+            <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap' }}>
+               <div style={{ background: '#fff', padding: '12px 20px', borderRadius: '8px', border: '1px solid #E2E8F0', fontWeight: '700', color: '#334155', display: 'flex', alignItems: 'center', gap: '8px' }}><Shield size={16}/> Volume ≠ Score (confidence only)</div>
+               <div style={{ background: '#fff', padding: '12px 20px', borderRadius: '8px', border: '1px solid #E2E8F0', fontWeight: '700', color: '#334155', display: 'flex', alignItems: 'center', gap: '8px' }}><Activity size={16}/> Recency matters (temporal decay)</div>
+               <div style={{ background: '#fff', padding: '12px 20px', borderRadius: '8px', border: '1px solid #E2E8F0', fontWeight: '700', color: '#334155', display: 'flex', alignItems: 'center', gap: '8px' }}><Lock size={16}/> No fabricated signals</div>
             </div>
           </div>
 
@@ -516,7 +525,8 @@ export default function App() {
                   <div>
                     <h2>{d.name}</h2>
                     <div className="meta">
-                      <MapPin size={12}/> {d.city}, {d.state} <span className="sep">•</span> {d.bedCount} beds <span className="sep">•</span> {d.nabhStatus?.replace(/_/g,' ')}
+                      <MapPin size={12}/> {d.city}, {d.state} {d.bedCount ? <><span className="sep">•</span> {d.bedCount} beds</> : ''} <span className="sep">•</span> {d.nabhStatus?.replace(/_/g,' ')}
+                      {d.gicEmpanelled && <><span className="sep">•</span> <span style={{color: 'var(--green)', fontWeight: 700}}>GIC Empanelled</span></>}
                     </div>
                   </div>
                   <button className="btn-audit" onClick={runAudit} disabled={auditing}>
@@ -546,13 +556,12 @@ export default function App() {
                     {showConfig && (
                       <div className="pii-config-panel">
                         <strong>Gravity Weights:</strong>
-                        <span className="weight-badge">Trust: 25%</span>
-                        <span className="weight-badge">Operational: 20%</span>
+                        <span className="weight-badge">Patient Exp: 30%</span>
+                        <span className="weight-badge">Clinical: 25%</span>
                         <span className="weight-badge">Billing: 20%</span>
-                        <span className="weight-badge">Clinical: 20%</span>
-                        <span className="weight-badge">Patient Exp: 10%</span>
-                        <span className="weight-badge">Fraud Risk: 5%</span>
-                        <p className="config-desc">Weightings map directly to claims exposure probability. High risk indices (e.g. upcoding) heavily penalize overall PII. Scores &gt;80 designate <strong>Premium Network</strong> tier.</p>
+                        <span className="weight-badge">Trust: 15%</span>
+                        <span className="weight-badge">Fraud Risk: 10%</span>
+                        <p className="config-desc">Weights reflect what patient reviews can measure. Fraud risk acts as a penalty. Scores &gt;80 designate <strong>Premium Network</strong> tier.</p>
                       </div>
                     )}
                   </div>
@@ -562,63 +571,69 @@ export default function App() {
                 <h3 className="split-header">Scoring dimensions — the Provider Intelligence Index</h3>
                 <div className="dimensions-matrix">
                   <div className="matrix-card">
-                    <h5>Trust Score (25%) <DeltaBadge val={deltas.trust} suffix="%"/></h5>
-                    <div className="mc-val">{d.trustScore?.toFixed(0)}%</div>
-                    <div className="mc-bar"><div className="mc-fill" style={{background: 'var(--blue)', width: `${d.trustScore}%`}}/></div>
-                    <p className="mc-desc">NABH status, accreditation age, empanelment history, local sentiments.</p>
+                    <h5>Patient Experience (30%) <DeltaBadge val={deltas.pat} suffix="%"/></h5>
+                    <div className="mc-val">{d.patientExperienceScore?.toFixed(0)}%</div>
+                    <div className="mc-bar"><div className="mc-fill" style={{background: 'var(--blue)', width: `${d.patientExperienceScore}%`}}/></div>
+                    <p className="mc-desc">Staff behavior, communication, wait times, room quality, empathy — directly from patient narratives.</p>
                     <div className="mc-footer">
-                      <div className="agent-run-tag"><Database size={10}/> Registry Agent</div>
-                      <div className="volumetrics">{vols.trust?.total} scanned (<span>+{vols.trust?.new} new</span>)</div>
+                      <div className="agent-run-tag"><Heart size={10}/> Review Agent</div>
+                      <div className="volumetrics">{d.reviewCount ?? 0} reviews analyzed</div>
                     </div>
                   </div>
                   <div className="matrix-card">
-                    <h5>Operational Score (20%) <DeltaBadge val={deltas.op} suffix="%"/></h5>
-                    <div className="mc-val">{d.operationalScore?.toFixed(0)}%</div>
-                    <div className="mc-bar"><div className="mc-fill" style={{background: 'var(--green)', width: `${d.operationalScore}%`}}/></div>
-                    <p className="mc-desc">Bed occupancy rate, staff ratio, pre-auth delays, ABDM status.</p>
+                    <h5>Clinical Quality (25%) <DeltaBadge val={deltas.clin} suffix="%"/></h5>
+                    <div className="mc-val">{d.clinicalQualityScore?.toFixed(0)}%</div>
+                    <div className="mc-bar"><div className="mc-fill" style={{background: 'var(--green)', width: `${d.clinicalQualityScore}%`}}/></div>
+                    <p className="mc-desc">Doctor competence, treatment outcomes, diagnosis accuracy, surgery success, post-op recovery.</p>
                     <div className="mc-footer">
-                      <div className="agent-run-tag"><Database size={10}/> Registry Agent</div>
-                      <div className="volumetrics">{vols.op?.total} scanned (<span>+{vols.op?.new} new</span>)</div>
+                      <div className="agent-run-tag"><Cpu size={10}/> Review Agent</div>
+                      <div className="volumetrics">{d.reviewCount ?? 0} reviews analyzed</div>
                     </div>
                   </div>
                   <div className="matrix-card">
-                    <h5>Billing Stability (20%) <DeltaBadge val={deltas.bill} suffix="%"/></h5>
+                    <h5>Billing Transparency (20%) <DeltaBadge val={deltas.bill} suffix="%"/></h5>
                     <div className="mc-val">{d.billingStabilityScore?.toFixed(0)}%</div>
                     <div className="mc-bar"><div className="mc-fill" style={{background: 'var(--orange)', width: `${d.billingStabilityScore}%`}}/></div>
-                    <p className="mc-desc">Package cost variations, top-up frequency, NHCX procedural billing patterns.</p>
+                    <p className="mc-desc">Hidden charges, overcharging, insurance hassles, unnecessary tests — extracted from billing complaints.</p>
                     <div className="mc-footer">
-                      <div className="agent-run-tag"><TrendingUp size={10}/> Billing Analyst</div>
-                      <div className="volumetrics">{vols.bill?.total} scanned (<span>+{vols.bill?.new} new</span>)</div>
+                      <div className="agent-run-tag"><TrendingUp size={10}/> Review Agent</div>
+                      <div className="volumetrics">{d.reviewCount ?? 0} reviews analyzed</div>
                     </div>
                   </div>
                   <div className="matrix-card">
-                    <h5>Clinical Quality (20%) <DeltaBadge val={deltas.clin} suffix="%"/></h5>
-                    <div className="mc-val">{d.clinicalQualityScore?.toFixed(0)}%</div>
-                    <div className="mc-bar"><div className="mc-fill" style={{background: 'var(--accent)', width: `${d.clinicalQualityScore}%`}}/></div>
-                    <p className="mc-desc">Specialty depth, physician NMC status, average length of stay peer matching.</p>
+                    <h5>Trust & Credibility (15%) <DeltaBadge val={deltas.trust} suffix="%"/></h5>
+                    <div className="mc-val">{d.trustScore?.toFixed(0)}%</div>
+                    <div className="mc-bar"><div className="mc-fill" style={{background: 'var(--accent)', width: `${d.trustScore}%`}}/></div>
+                    <p className="mc-desc">Review authenticity, rating distribution analysis, burst detection, volume-to-size ratio gating.</p>
                     <div className="mc-footer">
-                      <div className="agent-run-tag"><Cpu size={10}/> Orchestrator</div>
-                      <div className="volumetrics">{vols.clin?.total} scanned (<span>+{vols.clin?.new} new</span>)</div>
+                      <div className="agent-run-tag"><Shield size={10}/> Review Agent</div>
+                      <div className="volumetrics">{d.reviewCount ?? 0} reviews analyzed</div>
                     </div>
                   </div>
                   <div className="matrix-card">
-                    <h5>Patient Experience (10%) <DeltaBadge val={deltas.pat} suffix="%"/></h5>
-                    <div className="mc-val">{d.patientExperienceScore?.toFixed(0)}%</div>
-                    <div className="mc-bar"><div className="mc-fill" style={{background: 'var(--red)', width: `${d.patientExperienceScore}%`}}/></div>
-                    <p className="mc-desc">NLP parsed feedback reviews, Practo comments, consumer board disputes.</p>
-                    <div className="mc-footer">
-                      <div className="agent-run-tag"><Heart size={10}/> Sentiment Agent</div>
-                      <div className="volumetrics">{vols.pat?.total} scanned (<span>+{vols.pat?.new} new</span>)</div>
-                    </div>
-                  </div>
-                  <div className="matrix-card">
-                    <h5>Fraud Risk Indicator (5%) <DeltaBadge val={deltas.fraud} suffix="%"/></h5>
+                    <h5>Fraud Risk (10% penalty) <DeltaBadge val={deltas.fraud} suffix="%"/></h5>
                     <div className="mc-val" style={{color: riskLvl==='low'?'var(--green)':'var(--red)'}}>{d.fraudRiskScore?.toFixed(0)}%</div>
                     <div className="mc-bar"><div className="mc-fill" style={{background: riskLvl==='low'?'var(--green)':'var(--red)', width: `${d.fraudRiskScore}%`}}/></div>
-                    <p className="mc-desc">Multi-agent corroborated upcoding signals & peer outlier procedure frequencies.</p>
+                    <p className="mc-desc">Forced admissions, unnecessary surgeries, negligence claims, consumer court mentions.</p>
                     <div className="mc-footer">
-                      <div className="agent-run-tag"><Shield size={10}/> Supervisor Agent</div>
-                      <div className="volumetrics">{vols.fraud?.total} scanned (<span>+{vols.fraud?.new} new</span>)</div>
+                      <div className="agent-run-tag"><Lock size={10}/> Review Agent</div>
+                      <div className="volumetrics">{d.reviewCount ?? 0} reviews analyzed</div>
+                    </div>
+                  </div>
+                  <div className="matrix-card pii-composite-card">
+                    <h5>PII Composite Score</h5>
+                    <div className="mc-val">{d.piiScore?.toFixed(1)}</div>
+                    <div className="pii-breakdown">
+                      <div className="pii-row"><span>Patient (30%)</span><span>{((d.patientExperienceScore ?? 0) * 0.30).toFixed(1)}</span></div>
+                      <div className="pii-row"><span>Clinical (25%)</span><span>{((d.clinicalQualityScore ?? 0) * 0.25).toFixed(1)}</span></div>
+                      <div className="pii-row"><span>Billing (20%)</span><span>{((d.billingStabilityScore ?? 0) * 0.20).toFixed(1)}</span></div>
+                      <div className="pii-row"><span>Trust (15%)</span><span>{((d.trustScore ?? 0) * 0.15).toFixed(1)}</span></div>
+                      <div className="pii-row"><span>Operational (10%)</span><span>{((d.operationalScore ?? 0) * 0.10).toFixed(1)}</span></div>
+                      <div className="pii-row pii-divider"><span>÷ 0.96</span><span></span></div>
+                      <div className="pii-row"><span>− Fraud Penalty</span><span style={{color: 'var(--red)'}}>{d.fraudRiskScore && d.fraudRiskScore > 20 ? `-${Math.min(15, 15 * ((d.fraudRiskScore - 20) / 80)).toFixed(1)}` : '0.0'}</span></div>
+                    </div>
+                    <div className="mc-footer">
+                      <div className="agent-run-tag"><Activity size={10}/> Composite</div>
                     </div>
                   </div>
                 </div>
@@ -640,15 +655,34 @@ export default function App() {
                 <div className="apple-grid">
                   <div className="apple-card">
                     <h4>Empanelment & Quality Standards</h4>
-                    <div className="val-row"><span className="val-label">NABH Accreditation</span><span className={`val-data ${d.nabhStatus !== 'NOT_ACCREDITED' ? 'good' : 'bad'}`}>{d.nabhStatus?.replace(/_/g,' ')} {d.nabhGrade}</span></div>
+                    <div className="val-row"><span className="val-label">NABH Accreditation</span><span className={`val-data ${d.nabhStatus !== 'NOT_ACCREDITED' ? 'good' : 'bad'}`}>{d.nabhStatus?.replace(/_/g,' ')} {d.nabhGrade ?? ''}</span></div>
+                    <div className="val-row"><span className="val-label">GIC Empanelled</span><span className={`val-data ${d.gicEmpanelled ? 'good' : ''}`}>{d.gicEmpanelled ? 'Yes' : 'No'}</span></div>
+                    {d.gicTotalScore && <div className="val-row"><span className="val-label">Total Objective Score</span><span className="val-data">{d.gicTotalScore}</span></div>}
+                    {d.gicRohiniId && <div className="val-row"><span className="val-label">Rohini ID</span><span className="val-data" style={{fontSize:'0.7rem', fontFamily:'monospace'}}>{d.gicRohiniId}</span></div>}
                     <div className="val-row"><span className="val-label">CGHS Panel Empanelled</span><span className={`val-data ${d.cghsEmpanelled ? 'good' : ''}`}>{d.cghsEmpanelled ? 'Yes' : 'No'}</span></div>
                     <div className="val-row"><span className="val-label">ECHS Empanelled</span><span className={`val-data ${d.echsEmpanelled ? 'good' : ''}`}>{d.echsEmpanelled ? 'Yes' : 'No'}</span></div>
                   </div>
                   <div className="apple-card">
-                    <h4>Digital Health & Scale</h4>
+                    <h4>Infrastructure & Scale</h4>
                     <div className="val-row"><span className="val-label">ABDM HFR Status</span><span className={`val-data ${d.abdmReadiness ? 'good' : 'bad'}`}>{d.abdmReadiness ? 'Registered' : 'Pending'}</span></div>
-                    <div className="val-row"><span className="val-label">Bed Registry Capacity</span><span className="val-data">{d.bedCount} beds</span></div>
+                    <div className="val-row"><span className="val-label">Total Beds</span><span className="val-data">{d.bedCount ?? '—'}</span></div>
+                    {d.icuBeds && <div className="val-row"><span className="val-label">ICU Beds</span><span className="val-data">{d.icuBeds}</span></div>}
+                    {d.ventilatorCount != null && d.ventilatorCount > 0 && <div className="val-row"><span className="val-label">Ventilators</span><span className="val-data">{d.ventilatorCount}</span></div>}
+                    {d.ownershipType && <div className="val-row"><span className="val-label">Ownership</span><span className="val-data">{d.ownershipType}</span></div>}
                   </div>
+                  {d.gicEmpanelled && (
+                    <div className="apple-card">
+                      <h4>GIC Compliance & Facilities</h4>
+                      <div className="val-row"><span className="val-label">Pharmacy</span><span className={`val-data ${d.hasPharmacy ? 'good' : ''}`}>{d.hasPharmacy ? 'Yes' : 'No'}</span></div>
+                      <div className="val-row"><span className="val-label">Fire NOC</span><span className={`val-data ${d.hasFireNoc ? 'good' : 'bad'}`}>{d.hasFireNoc ? 'Yes' : 'No'}</span></div>
+                      <div className="val-row"><span className="val-label">Blood Bank</span><span className={`val-data ${d.hasBloodBank ? 'good' : ''}`}>{d.hasBloodBank ? 'Yes' : 'No'}</span></div>
+                      <div className="val-row"><span className="val-label">Ambulance</span><span className={`val-data ${d.hasAmbulance ? (d.ambulanceType === 'Outsourced' ? 'warn' : 'good') : ''}`}>{d.hasAmbulance ? (d.ambulanceType || 'Yes') : 'No'}</span></div>
+                      {d.totalDoctors && <div className="val-row"><span className="val-label">Doctors</span><span className="val-data">{d.totalDoctors}</span></div>}
+                      {d.totalNurses && <div className="val-row"><span className="val-label">Nurses</span><span className="val-data">{d.totalNurses}</span></div>}
+                      {d.drBedRatio && d.drBedRatio !== '0' && <div className="val-row"><span className="val-label">Dr:Bed Ratio</span><span className="val-data">1:{d.drBedRatio}</span></div>}
+                      {d.nurseBedRatio && d.nurseBedRatio !== '0' && <div className="val-row"><span className="val-label">Nurse:Bed Ratio</span><span className="val-data">1:{d.nurseBedRatio}</span></div>}
+                    </div>
+                  )}
                 </div>
 
                 <h3 className="split-header">
@@ -660,9 +694,10 @@ export default function App() {
                 <div className="apple-grid">
                   <div className="apple-card">
                     <h4>Patient Satisfaction & Volume</h4>
-                    <div className="val-row"><span className="val-label">Google Maps Crawled Reviews</span><span className="val-data">{d.reviews?.filter((r:any)=>r.source==='GOOGLE_MAPS').length ?? 0}</span></div>
+                    <div className="val-row"><span className="val-label">Google Maps Crawled Reviews</span><span className="val-data">{d.reviewCount ?? d.reviews?.filter((r:any)=>r.source==='GOOGLE_MAPS').length ?? 0}</span></div>
                     <div className="val-row"><span className="val-label">Practo Ratings Count</span><span className="val-data">{d.reviews?.filter((r:any)=>r.source==='PRACTO').length ?? 0}</span></div>
-                    <div className="val-row"><span className="val-label">NLP Positivity Index</span><span className={`val-data ${(d.reviews?.[0]?.sentimentScore??0)>0.6?'good':'bad'}`}>{d.reviews?.[0]?.sentimentScore ? `${(d.reviews[0].sentimentScore*100).toFixed(0)}% Positive` : 'N/A'}</span></div>
+                    <div className="val-row"><span className="val-label">NLP Positivity Index</span><span className={`val-data ${(d as any).positivityIndex != null ? ((d as any).positivityIndex >= 70 ? 'good' : 'bad') : ''}`}>{(d as any).positivityIndex != null ? `${(d as any).positivityIndex}% Positive` : 'N/A'}</span></div>
+                    {(d as any).avgRating != null && <div className="val-row"><span className="val-label">Avg Google Rating</span><span className={`val-data ${(d as any).avgRating >= 4 ? 'good' : (d as any).avgRating >= 3 ? '' : 'bad'}`}>{(d as any).avgRating.toFixed(1)} / 5.0</span></div>}
                   </div>
                   <div className="apple-card">
                     <h4>Public & News Ecosystem</h4>
@@ -671,10 +706,74 @@ export default function App() {
                   </div>
                 </div>
 
+                {/* Review Verification Section */}
+                {(() => {
+                  const textReviews = (d.reviews ?? []).filter((r: any) => r.text && r.text.trim().length > 0);
+                  if (!textReviews.length) return null;
+                  // Interleave negative and positive reviews so both sides are visible
+                  const negatives = textReviews.filter((r: any) => (r.sentimentScore ?? 0) < 0.5);
+                  const positives = textReviews.filter((r: any) => (r.sentimentScore ?? 0) >= 0.5);
+                  const interleaved: any[] = [];
+                  let ni = 0, pi = 0;
+                  while (ni < negatives.length || pi < positives.length) {
+                    if (ni < negatives.length) interleaved.push(negatives[ni++]);
+                    if (pi < positives.length) interleaved.push(positives[pi++]);
+                  }
+                  return (
+                    <>
+                      <h3 className="split-header">
+                        <CheckCircle2 size={14} color="var(--green)"/>
+                        Raw Reviews — Verify Legitimacy
+                        <span className="split-badge obj">{interleaved.length} with text of {d.reviewCount ?? textReviews.length} total</span>
+                      </h3>
+                      <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', margin: '-8px 0 12px' }}>
+                        Showing {negatives.length} negative / neutral and {positives.length} positive reviews. Sorted to interleave both perspectives.
+                      </p>
+                      <div className="reviews-section">
+                        {interleaved.map((rev: any, idx: number) => {
+                          const sentiment = rev.sentimentScore ?? 0;
+                          const sentLabel = sentiment >= 0.7 ? 'positive' : sentiment >= 0.4 ? 'neutral' : 'negative';
+                          const rating = rev.rating ? Math.min(5, Math.max(1, Math.round(rev.rating))) : null;
+                          const stars = rating ? '★'.repeat(rating) + '☆'.repeat(5 - rating) : null;
+                          const reviewAge = rev.reviewDate ? Math.floor((Date.now() - new Date(rev.reviewDate).getTime()) / (1000 * 60 * 60 * 24)) : null;
+                          const isDetailed = (rev.text?.length ?? 0) > 200;
+                          const themeTags = rev.themes ? rev.themes.split(',').map((t: string) => t.trim()).filter(Boolean) : [];
+                          return (
+                            <div key={rev.id ?? idx} className={`review-card ${sentLabel}`}>
+                              <div className="review-card-header">
+                                {stars && <div className="review-rating-stars">{stars}</div>}
+                                <div className="review-meta">
+                                  <span className="review-source">{rev.source?.replace(/_/g, ' ') ?? 'GOOGLE'}</span>
+                                  {rev.reviewDate && <span className="review-date">{new Date(rev.reviewDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</span>}
+                                  {reviewAge !== null && <span className="review-age">{reviewAge < 180 ? `${reviewAge}d ago` : reviewAge < 730 ? `${Math.floor(reviewAge / 30)}mo ago` : `${Math.floor(reviewAge / 365)}yr ago`}</span>}
+                                </div>
+                                <div className="review-flags">
+                                  {isDetailed && <span className="review-flag good">Detailed</span>}
+                                  <span className={`review-flag ${sentLabel}`}>{sentLabel === 'positive' ? '👍' : sentLabel === 'negative' ? '👎' : '➖'} {(sentiment * 100).toFixed(0)}%</span>
+                                </div>
+                              </div>
+                              <p className="review-text">{rev.text}</p>
+                              {themeTags.length > 0 && (
+                                <div className="review-themes">
+                                  {themeTags.map((t: string) => <span key={t} className="review-theme-tag">{t}</span>)}
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </>
+                  );
+                })()}
+
               </>
             )}
           </main>
         </div>
+      )}
+
+      {terminalAgent && (
+        <AgentTerminal agent={terminalAgent} onClose={() => setTerminalAgent(null)} />
       )}
     </div>
   );

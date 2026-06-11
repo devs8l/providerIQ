@@ -46,6 +46,16 @@ export class ScoringEngine {
     const patientExperience = this.computeDimension(categorySignals['PATIENT']!, 'patientExperience');
     const fraudRisk = this.computeDimension(categorySignals['FRAUD']!, 'fraudRisk');
 
+    // If trust has no direct signals, derive from overall positive signal ratio
+    if (trust.status === 'insufficient_data' && signals.length > 0) {
+      const positiveCount = signals.filter(s => (s as any).sentiment === 'positive' || (s.value !== undefined && s.value >= 0.6)).length;
+      const trustScore = (positiveCount / signals.length) * 100;
+      trust.score = parseFloat(Math.min(100, Math.max(0, trustScore)).toFixed(1));
+      trust.status = 'computed';
+      trust.signalCount = signals.length;
+      trust.confidence = 0.7;
+    }
+
     // 3. Compute Composite PII Score
     let scoreSum = 0;
     let weightSum = 0;
@@ -78,7 +88,7 @@ export class ScoringEngine {
       positiveFactors,
       negativeFactors,
       dataCompleteness: signals.length > 0 ? Math.min(1.0, signals.length / 10) : 0.2,
-      confidence: 0.85,
+      confidence: signals.length >= 50 ? 0.92 : signals.length >= 20 ? 0.85 : signals.length >= 5 ? 0.72 : 0.5,
       narrative,
       generatedAt,
     };
@@ -109,14 +119,20 @@ export class ScoringEngine {
       const decay = this.calculateDecay(sig);
       const effectiveWeight = sig.weight * sig.confidence * decay;
 
-      let scoreContribution = sig.value !== null && sig.value !== undefined ? sig.value * 100 : 70;
-      // Normalizing standard values if already 0-100 or 1-5 scale
-      if (sig.value !== null && sig.value !== undefined && sig.value > 1.0) {
-        if (sig.value <= 5.0) {
+      let scoreContribution: number;
+      if (sig.value !== null && sig.value !== undefined) {
+        if (sig.value <= 1.0) {
+          // 0-1 scale (from aspect classification) → 0-100
+          scoreContribution = sig.value * 100;
+        } else if (sig.value <= 5.0) {
           scoreContribution = (sig.value / 5.0) * 100; // eg. google rating
         } else if (sig.value <= 100.0) {
           scoreContribution = sig.value;
+        } else {
+          scoreContribution = 70;
         }
+      } else {
+        scoreContribution = 70;
       }
 
       weightedValSum += scoreContribution * effectiveWeight;
@@ -182,10 +198,10 @@ export class ScoringEngine {
           signalDate: sig.capturedAt,
         });
       }
-      if (sig.category === 'PATIENT' && sig.source === 'GOOGLE_MAPS' && sig.value && sig.value >= 4.0) {
+      if (sig.category === 'PATIENT' && sig.source === 'GOOGLE_MAPS' && sig.value && sig.value >= 0.7) {
         positiveFactors.push({
           label: 'High Patient Rating',
-          description: `Excellent patient satisfaction rating of ${sig.value} on Google Places.`,
+          description: `Excellent patient satisfaction signal (${(sig.value * 100).toFixed(0)}%) from Google Maps reviews.`,
           impact: 'positive',
           magnitude: 'medium',
           source: 'GOOGLE_MAPS',
