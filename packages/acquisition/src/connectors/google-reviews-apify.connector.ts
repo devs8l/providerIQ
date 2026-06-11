@@ -24,7 +24,7 @@ export class GoogleReviewsApifyConnector extends BasePublicEvidenceConnector {
     const rows = csvRowsToObjects(parseCsvRows(content));
 
     const candidates = rows.filter((row) => this.matchesSeed(row, input));
-    const maxReviews = input.options?.maxRecords ?? this.config.maxGoogleReviews;
+    const maxReviews = Number(input.options?.['maxRecords'] ?? this.config.maxGoogleReviews);
 
     const reviewRows = candidates
       .filter((row) => (row['review_rating'] ?? '').trim() !== '' || (row['review_text'] ?? '').trim() !== '')
@@ -79,7 +79,6 @@ export class GoogleReviewsApifyConnector extends BasePublicEvidenceConnector {
       text: row['review_text'] || undefined,
       rating: parseNum(row['review_rating']),
       ratingScale: 5,
-      reviewCount: parseNum(row['total_reviews']),
       authorDisplayNameHash: author ? sha256Hash(author.toLowerCase()) : undefined,
       publicAuthorMetadata: {
         profilePhotoPresent: false,

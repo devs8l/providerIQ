@@ -254,7 +254,7 @@ export class ApifyPractoReviewConnector {
     const seenTexts = new Set<string>();
 
     for (const item of flatItems) {
-      const text = typeof item.text === 'string' ? item.text.trim() : '';
+      const text = typeof item['text'] === 'string' ? item['text'].trim() : '';
       if (!text || text.length < 10) continue;
 
       // Dedupe by text content
@@ -263,10 +263,10 @@ export class ApifyPractoReviewConnector {
       seenTexts.add(textHash);
 
       const id = stableId([input.hospitalSeedId, 'PRACTO', text.slice(0, 100)]);
-      const sourceUrl = typeof item.sourceUrl === 'string' ? item.sourceUrl : directUrl;
+      const sourceUrl = typeof item['sourceUrl'] === 'string' ? item['sourceUrl'] : directUrl;
 
-      const rating = typeof item.rating === 'number' && item.rating >= 1 && item.rating <= 5
-        ? item.rating
+      const rating = typeof item['rating'] === 'number' && item['rating'] >= 1 && item['rating'] <= 5
+        ? item['rating']
         : undefined;
 
       evidence.push({
@@ -276,15 +276,15 @@ export class ApifyPractoReviewConnector {
         sourceType: 'review',
         sourceUrl,
         collectedAt: new Date().toISOString(),
-        publishedAt: typeof item.publishedAt === 'string' ? item.publishedAt : undefined,
-        title: typeof item.title === 'string' ? item.title : undefined,
+        publishedAt: typeof item['publishedAt'] === 'string' ? item['publishedAt'] : undefined,
+        title: typeof item['title'] === 'string' ? item['title'] : undefined,
         text,
-        authorName: typeof item.authorName === 'string' ? item.authorName : undefined,
+        authorName: typeof item['authorName'] === 'string' ? item['authorName'] : undefined,
         rating,
         ratingScale: 5,
         platformMetadata: {
-          doctorName: item.doctorName,
-          treatments: item.treatments,
+          doctorName: item['doctorName'],
+          treatments: item['treatments'],
         },
         acquisition: {
           connectorName: 'ApifyPractoReviewConnector',

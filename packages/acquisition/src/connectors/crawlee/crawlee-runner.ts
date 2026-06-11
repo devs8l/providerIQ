@@ -28,7 +28,7 @@ export async function runPlaywrightCrawl(
   const pages: CrawleeScrapedPage[] = [];
 
   const configuration = new Configuration({
-    storageDir: config.storageDir,
+    storageClientOptions: { localDataDirectory: config.storageDir },
   });
 
   const proxyConfiguration =

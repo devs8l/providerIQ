@@ -22,6 +22,7 @@ import {
   runRawQualityGate,
 } from '@provideriq/acquisition';
 import { ScoringEngine } from '@provideriq/scoring';
+import type { StoredSignal } from '@provideriq/shared';
 
 const t = initTRPC.context<Context>().create();
 
@@ -661,7 +662,7 @@ export const appRouter = router({
           facilityType: 'HOSPITAL',
           specialties: [],
         },
-        signals,
+        signals: signals as unknown as StoredSignal[],
       });
       steps.push({
         name: 'PII Scoring',

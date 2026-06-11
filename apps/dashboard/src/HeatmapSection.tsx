@@ -131,26 +131,30 @@ function SpiderChart({ selected, avg }: { selected: Facility; avg: Record<string
     const spiderTimers: number[] = [];
     series1.events.once('datavalidated', () => {
       series1.dataItems.forEach((di, i) => {
-        di.animate({
-          key: 'valueYWorking' as any,
-          from: 0,
-          to: di.get('valueY') ?? 0,
-          duration: 850,
-          delay: 60 + i * 35,
-          easing: am5.ease.out(am5.ease.cubic),
-        });
+        const t = window.setTimeout(() => {
+          di.animate({
+            key: 'valueYWorking' as any,
+            from: 0,
+            to: di.get('valueY') ?? 0,
+            duration: 850,
+            easing: am5.ease.out(am5.ease.cubic),
+          });
+        }, 60 + i * 35);
+        spiderTimers.push(t);
       });
     });
     series2.events.once('datavalidated', () => {
       series2.dataItems.forEach((di, i) => {
-        di.animate({
-          key: 'valueYWorking' as any,
-          from: 0,
-          to: di.get('valueY') ?? 0,
-          duration: 850,
-          delay: 180 + i * 35,
-          easing: am5.ease.out(am5.ease.cubic),
-        });
+        const t = window.setTimeout(() => {
+          di.animate({
+            key: 'valueYWorking' as any,
+            from: 0,
+            to: di.get('valueY') ?? 0,
+            duration: 850,
+            easing: am5.ease.out(am5.ease.cubic),
+          });
+        }, 180 + i * 35);
+        spiderTimers.push(t);
       });
     });
 
@@ -601,6 +605,8 @@ function TimelineHeatmap({ timeline, loading }: { timeline: TimelineDim[]; loadi
       endColor: am5.color('#2B7A4C'),
       startText: '1.0 — Critical',
       endText: '5.0 — Excellent',
+      startOpacity: 1,
+      endOpacity: 1,
       stepCount: 6,
       width: am5.percent(45),
       x: am5.percent(28),

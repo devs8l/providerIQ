@@ -142,7 +142,7 @@ export default function App() {
   const [terminalAgent, setTerminalAgent] = useState<'sentiment' | 'billing' | null>(null);
   const [animScore, setAnimScore] = useState<number | null>(null);
   const [deltas, setDeltas] = useState<any>({});
-  const [vols, setVols] = useState<any>({});
+  const [, setVols] = useState<any>({});
   const [showConfig, setShowConfig] = useState(false);
 
   const handleLogin = (e: any) => {

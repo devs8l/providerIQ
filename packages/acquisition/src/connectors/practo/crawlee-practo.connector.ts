@@ -86,7 +86,7 @@ export class CrawleePractoConnector {
     const maxLoadMoreClicks = input.maxRequests ?? 100;
 
     const configuration = new Configuration({
-      storageDir: config.storageDir,
+      storageClientOptions: { localDataDirectory: config.storageDir },
     });
 
     const proxyConfiguration =
@@ -227,12 +227,12 @@ export class CrawleePractoConnector {
         sourceUrl: page.url,
         title: page.title,
         text,
-        authorName: page.metadata?.authorName as string | undefined,
-        rating: page.metadata?.rating as number | undefined,
+        authorName: page.metadata?.['authorName'] as string | undefined,
+        rating: page.metadata?.['rating'] as number | undefined,
         ratingScale: 5,
-        publishedAt: page.metadata?.publishedAt as string | undefined,
-        doctorName: page.metadata?.doctorName as string | undefined,
-        treatments: page.metadata?.treatments as string[] | undefined,
+        publishedAt: page.metadata?.['publishedAt'] as string | undefined,
+        doctorName: page.metadata?.['doctorName'] as string | undefined,
+        treatments: page.metadata?.['treatments'] as string[] | undefined,
         collectedAt: new Date().toISOString(),
         acquisition: {
           connectorName: 'CrawleePractoConnector',
@@ -317,7 +317,7 @@ function parsePractoReviews(html: string | undefined, pageUrl: string): CrawleeS
     if (starsEl.length) {
       const starText = starsEl.attr('aria-label') || starsEl.text();
       const starMatch = starText.match(/(\d+(\.\d+)?)/);
-      if (starMatch) rating = parseFloat(starMatch[1]);
+      if (starMatch) rating = parseFloat(starMatch[1]!);
     }
     if (!rating && hasRecommend) rating = 5;
 

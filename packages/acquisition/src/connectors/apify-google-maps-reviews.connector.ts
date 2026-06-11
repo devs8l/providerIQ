@@ -43,12 +43,12 @@ export class ApifyGoogleMapsReviewsConnector extends BasePublicEvidenceConnector
   }
 
   async fetch(input: ConnectorInput): Promise<RawEvidenceBatch> {
-    const googleMapsUrl = input.options?.googleMapsUrl ?? input.seed.website;
+    const googleMapsUrl = (input.options?.['googleMapsUrl'] as string | undefined) ?? input.seed.website;
     if (!googleMapsUrl) {
       throw new Error('ApifyGoogleMapsReviewsConnector requires googleMapsUrl. Provide --googleMapsUrl or seed.website.');
     }
 
-    const maxReviews = input.options?.maxRecords ?? this.config.maxGoogleReviews;
+    const maxReviews = Number(input.options?.['maxRecords'] ?? this.config.maxGoogleReviews);
     const result = await this.fetchReviews({
       runId: input.runId,
       hospitalSeedId: input.seed.id,
@@ -86,13 +86,13 @@ export class ApifyGoogleMapsReviewsConnector extends BasePublicEvidenceConnector
     };
 
     if (input.googleMapsUrl) {
-      actorInput.startUrls = [{ url: input.googleMapsUrl }];
+      actorInput['startUrls'] = [{ url: input.googleMapsUrl }];
     } else {
       // Use searchStringsArray for name-based discovery
       const searchQuery = input.city
         ? `${input.hospitalName} ${input.city}`
         : input.hospitalName;
-      actorInput.searchStringsArray = [searchQuery];
+      actorInput['searchStringsArray'] = [searchQuery];
     }
 
     const actorApiPathId = normalizeActorApiPathId(actorId);

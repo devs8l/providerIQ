@@ -7,7 +7,7 @@ export interface RawEvidence {
   canonicalSourceUrl?: string;
   sourceRecordId: string;
   collectedAt: string;
-  publishedAt: string;
+  publishedAt?: string;
   title?: string;
   text?: string;
   rating?: number;

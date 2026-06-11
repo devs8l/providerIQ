@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Search, Activity, RefreshCw, CheckCircle2, AlertCircle, BarChart2, Shield, Heart, TrendingUp, Building2 } from 'lucide-react';
+import { Search, Activity, RefreshCw, AlertCircle } from 'lucide-react';
 
 const API = import.meta.env.PROD ? '/api/trpc' : 'http://localhost:4000/trpc';
 

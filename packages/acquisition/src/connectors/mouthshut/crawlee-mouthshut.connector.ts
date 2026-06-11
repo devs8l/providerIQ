@@ -136,10 +136,10 @@ export class CrawleeMouthShutConnector {
         sourceUrl: page.url,
         title: page.title,
         text,
-        authorName: page.metadata?.authorName as string | undefined,
-        rating: page.metadata?.rating as number | undefined,
+        authorName: page.metadata?.['authorName'] as string | undefined,
+        rating: page.metadata?.['rating'] as number | undefined,
         ratingScale: 5,
-        publishedAt: page.metadata?.publishedAt as string | undefined,
+        publishedAt: page.metadata?.['publishedAt'] as string | undefined,
         collectedAt: new Date().toISOString(),
         acquisition: {
           connectorName: 'CrawleeMouthShutConnector',
@@ -201,7 +201,7 @@ function parseMouthShutReviews(html: string | undefined, pageUrl: string): Crawl
       const ratingText = ratingEl.attr('title') || ratingEl.text();
       const ratingMatch = ratingText.match(/(\d+(\.\d+)?)/);
       if (ratingMatch) {
-        const val = parseFloat(ratingMatch[1]);
+        const val = parseFloat(ratingMatch[1]!);
         if (val >= 1 && val <= 5) rating = val;
         else if (val >= 1 && val <= 10) rating = Math.round((val / 2) * 10) / 10;
       }

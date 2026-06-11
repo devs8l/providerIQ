@@ -6,6 +6,7 @@ export function parseCsvRows(content: string): string[][] {
 export function csvRowsToObjects(rows: string[][]): Record<string, string>[] {
   if (rows.length < 2) return [];
   const [headers, ...data] = rows;
+  if (!headers) return [];
   return data.map(row => {
     const obj: Record<string, string> = {};
     headers.forEach((h, i) => { obj[h] = row[i] ?? ''; });

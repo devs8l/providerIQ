@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { Activity, Search, Terminal, Layers, ChevronRight, Clock, Database, Filter, BarChart2, Zap, ShieldCheck, CheckCircle2, Loader2 } from 'lucide-react';
+import { Activity, Search, Terminal, Layers, ChevronRight, Clock, Database, Filter, Zap, ShieldCheck, CheckCircle2, Loader2 } from 'lucide-react';
 
 const API = import.meta.env.PROD ? '/api/trpc' : 'http://localhost:4000/trpc';
 
@@ -379,7 +379,7 @@ const layerPlaceholders: PipelineStep[] = [
 
 // Render detail chips for each completed step
 function renderStepDetail(step: PipelineStep, color: string) {
-  const chips: JSX.Element[] = [];
+  const chips: React.ReactNode[] = [];
   const d = step.detail;
 
   if (d.mode) chips.push(<Chip key="mode" color={color} label={`Mode: ${d.mode as string}`} />);
