@@ -8,3 +8,6 @@ coverage/
 .DS_Store
 *.log
 .vercel
+
+# Corporate (Zscaler) CA exported for the container — do not commit
+certs/
