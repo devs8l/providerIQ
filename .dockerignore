@@ -1,0 +1,30 @@
+# --- Secrets (never bake into the image; pass at runtime via --env-file) ---
+.env
+.env.*
+!.env.example
+
+# --- Dependencies & build output (reinstalled / rebuilt inside the image) ---
+**/node_modules
+**/dist
+**/.turbo
+.turbo
+
+# --- VCS / editor / OS noise ---
+.git
+.gitignore
+.vscode
+.idea
+**/.DS_Store
+
+# --- Logs & caches ---
+*.log
+npm-debug.log*
+pnpm-debug.log*
+
+# --- Crawlee / scraper local runtime artifacts (NOT the src/storage code) ---
+crawlee_storage
+apify_storage
+apify_progress.json
+
+# NOTE: packages/database/prisma/dev.db is intentionally NOT ignored —
+# it is the seeded SQLite database the production app reads from.
