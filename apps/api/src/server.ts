@@ -17,7 +17,8 @@ import { appRouter } from './trpc/router.js';
 import type { Express } from 'express';
 
 const app: Express = express();
-const port = process.env['API_PORT'] ?? 4000;
+// Cloud Run (and most PaaS) inject PORT; fall back to API_PORT then 4000 locally.
+const port = process.env['PORT'] ?? process.env['API_PORT'] ?? 4000;
 
 app.use(cors({ origin: '*' }));
 app.use(express.json());

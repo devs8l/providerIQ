@@ -51,9 +51,9 @@ ENV NODE_ENV=production
 
 EXPOSE 4000
 
-# Liveness check against the combined static + API server.
+# Liveness check against the combined static + API server (honors the injected PORT).
 HEALTHCHECK --interval=30s --timeout=5s --start-period=25s --retries=3 \
-  CMD node -e "fetch('http://localhost:4000/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
+  CMD node -e "const p=process.env.PORT||process.env.API_PORT||4000;fetch('http://localhost:'+p+'/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
 
 # Run the API (which also serves the built dashboard in production).
 CMD ["pnpm", "--filter", "api", "run", "start:prod"]
